@@ -261,6 +261,7 @@ export async function generateEmbedding(text: string): Promise<number[] | null> 
 
 /**
  * Generate pet bio using AI with fallback to templates
+ * Bios are written in FIRST PERSON from the pet's perspective
  */
 export async function generatePetBioAI(
   name: string,
@@ -269,12 +270,12 @@ export async function generatePetBioAI(
   description?: string
 ): Promise<{ bio: string; tokensUsed: number; fromAI: boolean }> {
   // Try AI first
-  const systemPrompt = `You are a creative writer for an animal shelter. Write engaging, heartwarming pet adoption bios that highlight personality and encourage adoption. Keep bios under 100 words. Be warm but honest.`;
+  const systemPrompt = `You are a creative writer for an animal shelter. Write engaging, heartwarming pet adoption bios IN FIRST PERSON from the pet's perspective (e.g., "Hi, I'm Pickle! I love..."). Keep bios under 100 words. Be warm, playful, and encourage adoption. The pet should sound friendly and endearing.`;
 
-  const userPrompt = `Write an adoption bio for ${name}, a ${breed}. 
+  const userPrompt = `Write a first-person adoption bio for ${name}, a ${breed}. 
 Tags: ${tags.join(', ')}
 ${description ? `Additional info: ${description}` : ''}
-Make it engaging and highlight their personality.`;
+Write as if ${name} is introducing themselves. Start with "Hi, I'm ${name}!" or similar.`;
 
   const result = await chat(userPrompt, {
     model: 'gemini-1.5-flash',
@@ -287,13 +288,13 @@ Make it engaging and highlight their personality.`;
     return { bio: result.text, tokensUsed: result.tokensUsed, fromAI: true };
   }
 
-  // Fallback to template-based generation
+  // Fallback to template-based generation (first person)
   const traits = tags.map(t => t.toLowerCase()).join(', ').replace(/, ([^,]*)$/, ' and $1');
   
   const templates = [
-    `Meet ${name}! This ${breed} is best known for being ${traits || 'absolutely wonderful'}. Come say hello today!`,
-    `${name} is a one-of-a-kind ${breed}. ${traits ? `We describe them as ${traits}.` : ''} Ready to find their forever home!`,
-    `Looking for a ${breed}? ${name} might be your perfect match! ${traits ? `They're ${traits}.` : ''}`,
+    `Hi, I'm ${name}! I'm a ${breed} who loves being ${traits || 'the center of attention'}. I'm looking for my forever family - could that be you? Come meet me today!`,
+    `Hey there! My name is ${name}, and I'm a ${breed}. ${traits ? `My friends say I'm ${traits}.` : ''} I can't wait to find my perfect human match!`,
+    `Woof woof! (Or meow!) I'm ${name}, a lovable ${breed}. ${traits ? `I'm known for being ${traits}.` : ''} I'm ready to fill your home with love!`,
   ];
 
   return {
@@ -341,10 +342,11 @@ export async function generateMatchExplanation(
 }
 
 /**
- * Analyze pet image using Gemini Vision
+ * Analyze pet images using Gemini Vision
+ * Analyzes up to 5 photos to extract personality traits and behavioral cues
  */
 export async function analyzePetImage(
-  imageUrl: string
+  imageUrlOrUrls: string | string[]
 ): Promise<{ 
   breed?: string; 
   color?: string; 
@@ -360,50 +362,90 @@ export async function analyzePetImage(
     return null;
   }
 
+  // Convert to array and limit to 5 images
+  const imageUrls = Array.isArray(imageUrlOrUrls) 
+    ? imageUrlOrUrls.slice(0, 5) 
+    : [imageUrlOrUrls];
+
+  if (imageUrls.length === 0) return null;
+
   try {
     requestsThisHour++;
 
-    // Fetch image and convert to base64
-    const response = await fetch(imageUrl);
-    const arrayBuffer = await response.arrayBuffer();
-    const base64 = Buffer.from(arrayBuffer).toString('base64');
-    const mimeType = response.headers.get('content-type') || 'image/jpeg';
-
-    const result = await model.generateContent({
-      contents: [{
-        role: 'user',
-        parts: [
-          {
+    // Fetch all images and convert to base64
+    const imageParts = await Promise.all(
+      imageUrls.map(async (url) => {
+        try {
+          const response = await fetch(url);
+          const arrayBuffer = await response.arrayBuffer();
+          const base64 = Buffer.from(arrayBuffer).toString('base64');
+          const mimeType = response.headers.get('content-type') || 'image/jpeg';
+          return {
             inlineData: {
               mimeType,
               data: base64,
             },
-          },
-          {
-            text: `Analyze this pet photo and provide:
+          };
+        } catch {
+          return null;
+        }
+      })
+    );
+
+    // Filter out failed image fetches (type assertion needed for TypeScript)
+    const validImageParts = imageParts.filter((part): part is { inlineData: { mimeType: string; data: string } } => part !== null);
+    if (validImageParts.length === 0) return null;
+
+    const photoCount = validImageParts.length;
+    const prompt = photoCount === 1
+      ? `Analyze this pet photo and provide:
 1. Likely breed or breed mix
 2. Primary colors
-3. Temperament indicators you can observe (e.g., energetic, calm, friendly, shy)
+3. Observable behavioral/temperament cues (e.g., "relaxed posture", "alert expression", "playful stance", "calm demeanor")
 4. A brief 1-sentence description
+
+IMPORTANT: Only describe traits you can ACTUALLY observe in the photo. Do not make assumptions.
+
+Respond in JSON format:
+{
+  "breed": "breed name",
+  "color": "color description", 
+  "temperament": ["observed trait 1", "observed trait 2"],
+  "description": "brief description"
+}`
+      : `Analyze these ${photoCount} photos of the same pet and provide:
+1. Likely breed or breed mix
+2. Primary colors
+3. Observable behavioral/temperament cues based on what you see across all photos (e.g., "relaxed in most photos", "alert expression", "playful posture", "comfortable with camera")
+4. A brief 1-sentence description summarizing this pet
+
+IMPORTANT: Only describe traits you can ACTUALLY observe in the photos. Do not assume personality from breed.
 
 Respond in JSON format:
 {
   "breed": "breed name",
   "color": "color description",
-  "temperament": ["trait1", "trait2"],
-  "description": "brief description"
-}`,
-          },
+  "temperament": ["observed trait 1", "observed trait 2", "observed trait 3"],
+  "description": "brief description based on visual observation"
+}`;
+
+    const result = await model.generateContent({
+      contents: [{
+        role: 'user',
+        parts: [
+          ...validImageParts,
+          { text: prompt },
         ],
       }],
       generationConfig: {
         temperature: 0.3,
-        maxOutputTokens: 200,
+        maxOutputTokens: 300,
       },
     });
 
     const text = result.response.text();
-    const tokensUsed = Math.ceil(text.length / 4) + 500; // Account for image tokens
+    // Account for image tokens (~250 tokens per image for vision models)
+    const tokensUsed = Math.ceil(text.length / 4) + (250 * validImageParts.length);
 
     await trackUsage('gemini-1.5-flash', tokensUsed);
 

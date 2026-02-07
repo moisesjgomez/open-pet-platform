@@ -128,7 +128,7 @@ export default function UrgentBanner({ pets }: { pets: Pet[] }) {
           </h2>
           
           <p className="text-slate-600 text-lg leading-relaxed mb-8 max-w-lg">
-            {pet.description} The staff loves {pet.name} and we are looking for a special home that deserves this loyalty.
+            {pet.aiSummary || pet.aiBio || pet.description} The staff loves {pet.name} and we are looking for a special home that deserves this loyalty.
           </p>
 
           <div className="flex flex-wrap gap-4 mt-auto">

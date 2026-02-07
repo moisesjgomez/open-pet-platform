@@ -11,20 +11,70 @@ datasource db {
 }
 
 // ==========================================
+// NEXTAUTH.JS AUTHENTICATION
+// ==========================================
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ==========================================
 // USER & PREFERENCES
 // ==========================================
 
 model User {
-  id            String   @id @default(cuid())
-  sessionId     String   @unique // Anonymous session tracking
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  role          String    @default("user") // "user", "admin", "shelter"
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
-  // Relations
+  // Auth Relations
+  accounts      Account[]
+  sessions      Session[]
+
+  // App Relations
   preferences   UserPreference?
   swipeHistory  SwipeHistory[]
 
-  @@index([sessionId])
+  @@index([email])
 }
 
 model UserPreference {
@@ -118,6 +168,53 @@ model PetEmbedding {
 }
 
 // ==========================================
+// AI PET CONTENT (Generated Descriptions & Labels)
+// ==========================================
+
+model AIPetContent {
+  id              String   @id @default(cuid())
+  
+  petId           String   @unique  // External pet ID from adapter
+  source          String             // "petfinder", "shelterluv", "buffalo", "mock"
+  
+  // Content hash for smart regeneration
+  // Hash of {breed, age, description, imageUrl} - regenerate if changed
+  contentHash     String
+  
+  // Enrichment tier completed
+  // "heuristic" = Tier 0 only (free), "basic" = Tier 0+1, "full" = all tiers including AI
+  enrichmentTier  String   @default("heuristic")
+  
+  // Tier 0: Heuristic-based (always populated, FREE)
+  heuristicTags   Json     @default("[]")  // Array of strings from text-analysis.ts
+  energyLevel     String?                   // "Low", "Moderate", "High"
+  size            String?                   // "Small", "Medium", "Large", "Extra Large"
+  ageCategory     String?                   // "Baby", "Young", "Adult", "Senior"
+  
+  // Tier 2: AI-generated (optional, COSTS TOKENS)
+  aiBio           String?  @db.Text         // Gemini-generated adoption bio
+  aiSummary       String?                   // 1-line summary for cards
+  aiTags          Json     @default("[]")   // AI-inferred personality tags
+  aiTemperament   Json     @default("[]")   // AI-detected temperament
+  
+  // Image analysis results (optional, expensive - only when needed)
+  imageAnalysis   Json?    // {breed, color, temperament, description}
+  imageAnalyzed   Boolean  @default(false)
+  
+  // Tracking
+  tokensUsed      Int      @default(0)      // Total tokens spent on this pet
+  modelVersion    String?                   // "gemini-1.5-flash" for cache invalidation
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([petId])
+  @@index([source])
+  @@index([contentHash])  // For deduplication lookup
+  @@index([enrichmentTier])
+}
+
+// ==========================================
 // USAGE TRACKING (Budget Control)
 // ==========================================
 
@@ -125,7 +222,7 @@ model AIUsage {
   id        String   @id @default(cuid())
   
   date      DateTime @db.Date @default(now())
-  model     String   // "gpt-3.5-turbo", "gpt-4", "text-embedding-3-small"
+  model     String   // "gemini-1.5-flash", "gemini-1.5-pro", "text-embedding-004"
   
   // Daily totals
   requestCount Int   @default(0)

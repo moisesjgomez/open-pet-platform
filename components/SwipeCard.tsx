@@ -65,14 +65,21 @@ export default function SwipeCard({ pet, onSwipe }: Props) {
         style={{ x, rotate }}
         className="relative w-full max-w-sm h-[600px] bg-white rounded-3xl shadow-2xl cursor-grab active:cursor-grabbing overflow-hidden border border-gray-200"
       >
-        {/* The Dog Photo */}
+        {/* The Pet Photo - use images array if available, fallback to imageUrl */}
         <div className="relative h-3/4 w-full bg-gray-100">
            {/* We use a standard img tag here because 'fill' acts weird in draggables sometimes */}
            <img 
-             src={pet.imageUrl} 
+             src={pet.images?.[0] ?? pet.imageUrl} 
              alt={pet.name} 
              className="w-full h-full object-cover pointer-events-none" // pointer-events-none prevents dragging the image itself
            />
+           
+           {/* Image count indicator */}
+           {pet.images && pet.images.length > 1 && (
+             <div className="absolute bottom-3 right-3 bg-black/50 text-white text-xs px-2 py-1 rounded-full">
+               📷 {pet.images.length} photos
+             </div>
+           )}
            
            {/* Info button - tap to see profile */}
            <button
@@ -106,6 +113,13 @@ export default function SwipeCard({ pet, onSwipe }: Props) {
              </div>
              <div className="text-2xl font-bold text-gray-300">{pet.age}</div>
           </div>
+          
+          {/* AI Summary - short 1-liner when available */}
+          {pet.aiSummary && (
+            <p className="text-sm text-indigo-600 font-medium italic line-clamp-2">
+              &ldquo;{pet.aiSummary}&rdquo;
+            </p>
+          )}
 
           {/* NEW: Rich Data Badges */}
           <div className="flex flex-wrap gap-2">
@@ -131,7 +145,8 @@ export default function SwipeCard({ pet, onSwipe }: Props) {
             )}
             
             {/* AI Generated Tags (Show up to 3 extra fun ones) */}
-            {pet.tags
+            {[...(pet.aiTags || []), ...pet.tags]
+                .filter((t, i, arr) => arr.indexOf(t) === i) // Deduplicate
                 .filter(t => !['Dog', 'Cat', 'High Energy', 'Low Energy', 'Chill', 'Senior', 'Small', 'Large', 'Good with Kids'].includes(t))
                 .slice(0, 3)
                 .map(tag => (

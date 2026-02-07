@@ -38,7 +38,7 @@ export class MockAdapter implements PetDataSource {
         status: 'Available',
         sex: 'Male',
         age: '2 years',
-        description: 'Bandit is full of energy and loves frisbees. He needs an active owner.',
+        description: 'Hi, I\'m Bandit! I\'m full of energy and absolutely love frisbees. I need an active owner who can keep up with me on adventures!',
         imageUrl: 'https://images.unsplash.com/photo-1517849845537-4d257902454a?auto=format&fit=crop&w=800',
         images: [
           'https://images.unsplash.com/photo-1517849845537-4d257902454a?auto=format&fit=crop&w=800',
@@ -65,7 +65,7 @@ export class MockAdapter implements PetDataSource {
         status: 'Available',
         sex: 'Male',
         age: '9 years',
-        description: 'Rex is a gentle grandpa looking for a quiet porch.',
+        description: 'Hey there, I\'m Rex. I\'m a gentle grandpa looking for a quiet porch to relax on. I\'ve got plenty of wisdom and love to share!',
         imageUrl: 'https://images.unsplash.com/photo-1589941013453-ec89f33b5e95?auto=format&fit=crop&w=800',
         images: [
           'https://images.unsplash.com/photo-1589941013453-ec89f33b5e95?auto=format&fit=crop&w=800',
@@ -92,7 +92,7 @@ export class MockAdapter implements PetDataSource {
         status: 'Available',
         sex: 'Male',
         age: '1 year',
-        description: 'Small but mighty! Pip loves to dig.',
+        description: 'I\'m Pip and I may be small, but I\'m mighty! I absolutely love to dig - your backyard will never be the same!',
         imageUrl: 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&w=800',
         images: [
           'https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&w=800',
@@ -118,7 +118,7 @@ export class MockAdapter implements PetDataSource {
         status: 'Available',
         sex: 'Male',
         age: '3 years',
-        description: 'Thor talks a lot. He sings the song of his people.',
+        description: 'Awoooo! I\'m Thor and I love to talk! I\'ll sing you the song of my people every day. Hope you like conversation!',
         imageUrl: 'https://images.unsplash.com/photo-1560743641-691c7705cf63?auto=format&fit=crop&w=800',
         images: [
           'https://images.unsplash.com/photo-1560743641-691c7705cf63?auto=format&fit=crop&w=800',
@@ -146,7 +146,7 @@ export class MockAdapter implements PetDataSource {
         status: 'Available',
         sex: 'Female',
         age: '4 years',
-        description: 'Daisy is a giant marshmallow who thinks she is a lap dog.',
+        description: 'Hi, I\'m Daisy! I\'m a giant marshmallow who thinks I\'m a lap dog. I promise I\'ll keep you warm on the couch!',
         imageUrl: 'https://images.unsplash.com/photo-1561037404-61cd46aa615b?auto=format&fit=crop&w=800',
         images: [
           'https://images.unsplash.com/photo-1561037404-61cd46aa615b?auto=format&fit=crop&w=800',
@@ -173,7 +173,7 @@ export class MockAdapter implements PetDataSource {
         status: 'Available',
         sex: 'Male',
         age: '5 years',
-        description: 'Chip must be adopted with his brother, Dale.',
+        description: 'I\'m Chip, and I come with my best buddy Dale! We\'re a bonded pair and need to be adopted together. Double the love!',
         imageUrl: 'https://images.unsplash.com/photo-1537151608828-ea2b11777ee8?auto=format&fit=crop&w=800',
         images: [
           'https://images.unsplash.com/photo-1537151608828-ea2b11777ee8?auto=format&fit=crop&w=800',
@@ -199,7 +199,7 @@ export class MockAdapter implements PetDataSource {
         status: 'Pending',
         sex: 'Male',
         age: '5 years',
-        description: 'A gentle giant who loves water.',
+        description: 'I\'m Bear, a gentle giant who loves water! Take me to the lake and I\'ll be your best swimming buddy forever.',
         imageUrl: 'https://images.unsplash.com/photo-1544568100-847a948585b9?auto=format&fit=crop&w=800',
         images: [
           'https://images.unsplash.com/photo-1544568100-847a948585b9?auto=format&fit=crop&w=800',
@@ -226,7 +226,7 @@ export class MockAdapter implements PetDataSource {
         status: 'Available',
         sex: 'Female',
         age: '2 years',
-        description: 'Hypoallergenic and super smart.',
+        description: 'Hi, I\'m Coco! I\'m hypoallergenic and super smart. I already know lots of tricks and I\'m ready to learn more with you!',
         imageUrl: 'https://images.unsplash.com/photo-1591769225440-811ad7d6eca6?auto=format&fit=crop&w=800',
         images: [
           'https://images.unsplash.com/photo-1591769225440-811ad7d6eca6?auto=format&fit=crop&w=800',
@@ -253,7 +253,7 @@ export class MockAdapter implements PetDataSource {
         status: 'Available',
         sex: 'Female',
         age: '1 year',
-        description: 'Luna is a vocal princess who demands attention.',
+        description: 'Meow! I\'m Luna, and yes, I\'m a vocal princess who demands attention. But I\'ll repay you with endless purrs and cuddles!',
         imageUrl: 'https://images.unsplash.com/photo-1513245543132-31f507417b26?auto=format&fit=crop&w=800',
         images: [
           'https://images.unsplash.com/photo-1513245543132-31f507417b26?auto=format&fit=crop&w=800',
@@ -280,7 +280,7 @@ export class MockAdapter implements PetDataSource {
         status: 'Available',
         sex: 'Male',
         age: '5 years',
-        description: 'Oliver loves lasagna and sleeping in sunbeams.',
+        description: 'Hey, I\'m Oliver! I love lasagna and sleeping in sunbeams. My perfect day is napping, eating, and getting belly rubs.',
         imageUrl: 'https://images.unsplash.com/photo-1574158622682-e40e69881006?auto=format&fit=crop&w=800',
         images: [
           'https://images.unsplash.com/photo-1574158622682-e40e69881006?auto=format&fit=crop&w=800',
@@ -308,7 +308,7 @@ export class MockAdapter implements PetDataSource {
         status: 'Available',
         sex: 'Female',
         age: '8 weeks',
-        description: 'A tiny kitten with a big personality.',
+        description: 'Mew mew! I\'m Mittens, a tiny kitten with a BIG personality! I\'m ready to play, explore, and steal your heart!',
         imageUrl: 'https://images.unsplash.com/photo-1561948955-570b270e7c36?auto=format&fit=crop&w=800',
         images: [
           'https://images.unsplash.com/photo-1561948955-570b270e7c36?auto=format&fit=crop&w=800',
@@ -336,7 +336,7 @@ export class MockAdapter implements PetDataSource {
         status: 'Available',
         sex: 'Male',
         age: '2 years',
-        description: 'Shadow is a ninja. You will never see him coming.',
+        description: 'I\'m Shadow, a mysterious ninja cat. You\'ll never see me coming, but I promise I\'m the most loyal companion once you earn my trust.',
         imageUrl: 'https://images.unsplash.com/photo-1557246565-8a3d3ab5d7f6?auto=format&fit=crop&w=800',
         images: [
           'https://images.unsplash.com/photo-1557246565-8a3d3ab5d7f6?auto=format&fit=crop&w=800',
@@ -362,7 +362,7 @@ export class MockAdapter implements PetDataSource {
         status: 'Available',
         sex: 'Male',
         age: '3 years',
-        description: 'A majestic lion of a cat. Very fluffy.',
+        description: 'Roar! I\'m Simba, a majestic lion of a cat. I\'m very fluffy and I demand to be brushed like the royalty I am.',
         imageUrl: 'https://images.unsplash.com/photo-1533738363-b7f9aef128ce?auto=format&fit=crop&w=800',
         images: [
           'https://images.unsplash.com/photo-1533738363-b7f9aef128ce?auto=format&fit=crop&w=800',
@@ -389,7 +389,7 @@ export class MockAdapter implements PetDataSource {
         status: 'Available',
         sex: 'Female',
         age: '6 years',
-        description: 'Bella is the queen of the house. She tolerates humans.',
+        description: 'I\'m Bella, the queen of any house I live in. I tolerate humans... and occasionally allow them to pet me. You\'re welcome.',
         imageUrl: 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&w=800',
         images: [
           'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&w=800',
@@ -414,11 +414,22 @@ export class MockAdapter implements PetDataSource {
   async getAllPets(): Promise<Pet[]> {
     // Simulate network delay
     await new Promise((resolve) => setTimeout(resolve, 500));
-    return this.pets;
+    // Mark all mock pets as having real descriptions (not synthetic)
+    return this.pets.map(pet => ({
+      ...pet,
+      shelterNotes: pet.description, // Use description as shelter notes
+      isSyntheticDescription: false, // Mock data simulates real shelter descriptions
+    }));
   }
 
   async getPet(id: string): Promise<Pet | null> {
     await new Promise((resolve) => setTimeout(resolve, 300));
-    return this.pets.find((p) => p.id === id) || null;
+    const pet = this.pets.find((p) => p.id === id);
+    if (!pet) return null;
+    return {
+      ...pet,
+      shelterNotes: pet.description,
+      isSyntheticDescription: false,
+    };
   }
 }

@@ -742,7 +742,10 @@ export default function PetExplorer({ initialPets, locationSearchEnabled = false
                         <p className="text-blue-600 font-bold text-sm mb-3 uppercase tracking-wide">{pet.breed}</p>
                         
                         <div className="flex flex-wrap gap-2 mb-6">
-                             {pet.tags?.slice(0,4).map(tag => {
+                             {[...(pet.aiTags || []), ...(pet.tags || [])]
+                               .filter((t, i, arr) => arr.indexOf(t) === i) // Deduplicate
+                               .slice(0, 4)
+                               .map(tag => {
                                 let style = 'bg-slate-100 text-slate-700 border-slate-200';
                                 if (['High Energy', 'Playful'].includes(tag)) style = 'bg-orange-50 text-orange-700 border-orange-100';
                                 else if (['Low Energy', 'Chill', 'Couch Potato'].includes(tag)) style = 'bg-blue-50 text-blue-700 border-blue-100';
@@ -787,7 +790,10 @@ export default function PetExplorer({ initialPets, locationSearchEnabled = false
 
                         <div className="hidden md:block">
                              <div className="flex gap-2">
-                                {pet.tags?.slice(0, 3).map(tag => {
+                                {[...(pet.aiTags || []), ...(pet.tags || [])]
+                                  .filter((t, i, arr) => arr.indexOf(t) === i)
+                                  .slice(0, 3)
+                                  .map(tag => {
                                     let style = 'bg-slate-100 text-slate-700 border-slate-200';
                                     if (['High Energy', 'Playful'].includes(tag)) style = 'bg-orange-50 text-orange-700 border-orange-100';
                                     else if (['Low Energy', 'Chill', 'Couch Potato'].includes(tag)) style = 'bg-blue-50 text-blue-700 border-blue-100';

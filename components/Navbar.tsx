@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { Menu, X, Dog, Cat, Heart } from 'lucide-react';
+import UserMenu from './UserMenu';
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
@@ -35,10 +36,12 @@ export default function Navbar() {
               <Heart size={20} />
               Shortlist
             </Link>
+            <UserMenu />
           </div>
 
           {/* MOBILE MENU BUTTON */}
-          <div className="flex items-center md:hidden">
+          <div className="flex items-center gap-4 md:hidden">
+            <UserMenu />
             <button onClick={() => setIsOpen(!isOpen)} className="text-slate-600 hover:text-slate-900 p-2">
               {isOpen ? <X size={28} /> : <Menu size={28} />}
             </button>

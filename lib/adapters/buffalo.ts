@@ -33,73 +33,55 @@ export class BuffaloAdapter implements PetDataSource {
     // Capitalize nicely
     name = name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
 
-    // 2. Synthesize Description
+    // 2. Synthesize Description (MARKED AS SYNTHETIC - no real personality data)
     let syntheticDesc = `Meet ${name}, a ${animal.petage.toLowerCase()} ${animal.breed.toLowerCase()}. `;
     syntheticDesc += `This ${animal.petsize.toLowerCase()} ${animal.animaltype.toLowerCase()} has a beautiful ${animal.color.toLowerCase()} coat. `;
     syntheticDesc += `Currently waiting for a forever home at the adoption center.`;
 
-    // 3. "AI ENRICHMENT"
-    const desc = syntheticDesc.toLowerCase();
+    // 3. Basic Tags ONLY - no fake personality traits from breed stereotypes
     let tags: string[] = [];
 
     // Basic Type Tags
     if (animal.animaltype === 'DOG') tags.push('Dog');
     if (animal.animaltype === 'CAT') tags.push('Cat');
 
-    // --- ADVANCED HEURISTICS (Simulating AI Analysis) ---
-    
-    // 1. Breed-Based Personality
-    const breed = animal.breed.toUpperCase();
-    if (breed.includes('RETRIEVER') || breed.includes('LABRADOR')) tags.push('Friendly', 'Good with Kids', 'Playful');
-    if (breed.includes('SHEPHERD') || breed.includes('MALINOIS')) tags.push('Smart', 'High Energy', 'Protective');
-    if (breed.includes('HUSKY') || breed.includes('MALAMUTE')) tags.push('Vocal', 'High Energy', 'Escape Artist');
-    if (breed.includes('BULLDOG') || breed.includes('PUG')) tags.push('Chill', 'Couch Potato', 'Snorer');
-    if (breed.includes('TERRIER')) tags.push('Tenacious', 'High Energy', 'Smart');
-    if (breed.includes('CHIHUAHUA')) tags.push('Loyal', 'Lap Dog', 'Vocal');
-    if (breed.includes('PIT') || breed.includes('STAFF')) tags.push('Affectionate', 'Strong', 'Loyal');
-    if (breed.includes('HOUND') || breed.includes('BEAGLE')) tags.push('Nose Work', 'Vocal', 'Food Motivated');
-    if (breed.includes('BOXER')) tags.push('Goofy', 'High Energy', 'Playful');
-    if (breed.includes('POODLE')) tags.push('Smart', 'Hypoallergenic', 'Active');
-    if (breed.includes('DOMESTIC SH') || breed.includes('DOMESTIC MH')) tags.push('Low Maintenance', 'Independent');
-    if (breed.includes('SIAMESE')) tags.push('Vocal', 'Social', 'Smart');
-    if (breed.includes('MAINE COON')) tags.push('Gentle Giant', 'Fluffy', 'Friendly');
+    // Size tag
+    if (animal.petsize === 'SMALL') tags.push('Small');
+    if (animal.petsize === 'MEDIUM') tags.push('Medium');
+    if (animal.petsize === 'LARGE') tags.push('Large');
+    if (animal.petsize === 'X-LARGE') tags.push('Extra Large');
 
-    // 2. Age-Based Traits
+    // Age-Based Traits (factual, not personality)
     const ageNum = parseInt(animal.petage);
     if (animal.petage.includes('MONTH') || (ageNum < 1 && animal.petage.includes('YEAR') === false)) {
-        tags.push('Puppy/Kitten', 'Needs Training', 'High Energy');
+        tags.push('Puppy/Kitten');
     } else if (ageNum >= 8) {
-        tags.push('Senior', 'Chill', 'Wise');
+        tags.push('Senior');
     } else if (ageNum >= 2 && ageNum < 8) {
-        tags.push('Adult', 'Settled');
+        tags.push('Adult');
+    } else {
+        tags.push('Young');
     }
 
-    // 3. Size/Environment
-    if (animal.petsize === 'SMALL') tags.push('Apartment Friendly', 'Lap Dog');
-    if (animal.petsize === 'LARGE' || animal.petsize === 'X-LARGE') tags.push('Needs Yard', 'Active Buddy');
-
-    // 4. Color/Pattern Fun (Just for flavor)
-    if (animal.color.includes('TABBY')) tags.push('Striped');
-    if (animal.color.includes('CALICO') || animal.color.includes('TORTIE')) tags.push('Sassy'); // "Tortitude"
-    if (animal.color.includes('BLACK')) tags.push('Sleek');
-    if (animal.color.includes('WHITE')) tags.push('Snowy');
+    // Color/Pattern (visual facts, not personality)
+    if (animal.color.includes('TABBY')) tags.push('Tabby');
+    if (animal.color.includes('CALICO')) tags.push('Calico');
+    if (animal.color.includes('TORTIE')) tags.push('Tortoiseshell');
+    if (animal.color.includes('TUXEDO')) tags.push('Tuxedo');
 
     tags = Array.from(new Set(tags));
 
-    // 4. Structured AI Fields
-    let energy: 'Low' | 'Moderate' | 'High' = 'Moderate';
-    if (tags.includes('High Energy') || tags.includes('Active')) energy = 'High';
-    if (tags.includes('Chill') || tags.includes('Senior') || tags.includes('Couch Potato')) energy = 'Low';
+    // 4. Structured Fields (factual only)
+    let energy: 'Low' | 'Moderate' | 'High' = 'Moderate'; // Default, unknown
+    // Seniors tend to be calmer
+    if (ageNum >= 8) energy = 'Low';
+    // Puppies/kittens tend to be more energetic
+    if (animal.petage.includes('MONTH')) energy = 'High';
 
     let size: 'Small' | 'Medium' | 'Large' | 'Extra Large' = 'Medium';
     if (animal.petsize === 'SMALL') size = 'Small';
     if (animal.petsize === 'LARGE') size = 'Large';
     if (animal.petsize === 'X-LARGE') size = 'Extra Large';
-    
-    // Compatibility
-    const kids = tags.includes('Good with Kids') || tags.includes('Friendly') || tags.includes('Gentle Giant');
-    const dogs = !tags.includes('Protective') && !tags.includes('Independent'); // Simple heuristic
-    const cats = animal.animaltype === 'CAT';
 
     // 5. Image Handling
     // Use real image if available, otherwise fallback
@@ -128,14 +110,16 @@ export class BuffaloAdapter implements PetDataSource {
       age: animal.petage,
       status: 'Available',
       imageUrl: imageUrl,
-      images: [imageUrl], // Populate gallery with single image for now
+      images: [imageUrl], // Single image from API - AI can analyze for personality
       description: syntheticDesc,
+      shelterNotes: undefined, // No real shelter notes available from this API
+      isSyntheticDescription: true, // Mark as synthetic - don't extract fake personality traits
       tags: tags,
       daysInShelter: Math.floor((Date.now() - new Date(animal.indate).getTime()) / (1000 * 60 * 60 * 24)),
       location: 'Montgomery County Animal Services, MD',
       energyLevel: energy,
       size: size,
-      compatibility: { kids, dogs, cats }
+      compatibility: { kids: null, dogs: null, cats: null } // Unknown - don't assume
     };
   }
 

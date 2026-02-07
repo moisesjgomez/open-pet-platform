@@ -1,10 +1,9 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { MessageCircle, X, Send, Sparkles, Bot, User } from 'lucide-react';
+import { X, Send, Sparkles, Bot, RotateCcw, Zap } from 'lucide-react';
 import { Pet } from '@/lib/adapters/base';
-import { MockAdapter } from '@/lib/adapters/mock';
-import { findMatch } from '@/lib/services/ai';
+import { ConversationState, createInitialState } from '@/lib/services/ai';
 import Image from 'next/image';
 import Link from 'next/link';
 
@@ -20,8 +19,11 @@ export default function AIChatWidget() {
   const [isTyping, setIsTyping] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   
+  // Conversation state - persists across messages
+  const [conversationState, setConversationState] = useState<ConversationState>(createInitialState());
+  
   const [messages, setMessages] = useState<Message[]>([
-    { role: 'bot', text: 'Hi! I\'m the AI Matchmaker. Tell me about your lifestyle (e.g., "I live in an apartment and love hiking") and I\'ll find your perfect pet!' }
+    { role: 'bot', text: 'Hi! I\'m your Pet Concierge. Tell me about your lifestyle and I\'ll find your perfect companion! First - are you looking for a Dog or a Cat?' }
   ]);
 
   // Auto-scroll to bottom of chat
@@ -30,6 +32,45 @@ export default function AIChatWidget() {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages, isOpen]);
+
+  const handleStartOver = () => {
+    setConversationState(createInitialState());
+    setMessages([
+      { role: 'bot', text: 'Let\'s start fresh! Are you looking for a Dog or a Cat?' }
+    ]);
+  };
+
+  // Quick Match - get random pets immediately
+  const handleQuickMatch = async () => {
+    setIsTyping(true);
+    setMessages(prev => [...prev, { role: 'user', text: '⚡ Quick Match!' }]);
+
+    try {
+      const res = await fetch('/api/ai/concierge', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          message: 'surprise me with some pets!', 
+          conversationState 
+        }),
+      });
+      
+      const data = await res.json();
+      setConversationState(data.newState);
+      setIsTyping(false);
+      setMessages(prev => [...prev, { 
+        role: 'bot', 
+        text: data.reply,
+        attachments: data.pets 
+      }]);
+    } catch (error) {
+      setIsTyping(false);
+      setMessages(prev => [...prev, { 
+        role: 'bot', 
+        text: 'Oops! Something went wrong. Please try again.' 
+      }]);
+    }
+  };
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,20 +82,36 @@ export default function AIChatWidget() {
     setInput('');
     setIsTyping(true);
 
-    // 2. Fetch All Pets (In real app, backend does this)
-    const adapter = new MockAdapter();
-    const allPets = await adapter.getAllPets();
+    try {
+      // 2. Call the API endpoint
+      const res = await fetch('/api/ai/concierge', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          message: userMsg, 
+          conversationState 
+        }),
+      });
+      
+      const data = await res.json();
+      
+      // 3. Update conversation state
+      setConversationState(data.newState);
 
-    // 3. Call AI Service
-    const response = await findMatch(userMsg, allPets);
-
-    // 4. Add Bot Response
-    setIsTyping(false);
-    setMessages(prev => [...prev, { 
-      role: 'bot', 
-      text: response.text,
-      attachments: response.pets 
-    }]);
+      // 4. Add Bot Response
+      setIsTyping(false);
+      setMessages(prev => [...prev, { 
+        role: 'bot', 
+        text: data.reply,
+        attachments: data.pets 
+      }]);
+    } catch (error) {
+      setIsTyping(false);
+      setMessages(prev => [...prev, { 
+        role: 'bot', 
+        text: 'Sorry, I had trouble processing that. Please try again!' 
+      }]);
+    }
   };
 
   return (
@@ -87,9 +144,18 @@ export default function AIChatWidget() {
                 </p>
               </div>
             </div>
-            <button onClick={() => setIsOpen(false)} className="text-slate-400 hover:text-white">
-              <X size={20} />
-            </button>
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={handleStartOver} 
+                className="text-slate-400 hover:text-white p-1.5 hover:bg-white/10 rounded-lg transition"
+                title="Start Over"
+              >
+                <RotateCcw size={18} />
+              </button>
+              <button onClick={() => setIsOpen(false)} className="text-slate-400 hover:text-white">
+                <X size={20} />
+              </button>
+            </div>
           </div>
 
           {/* Messages Area */}
@@ -132,6 +198,18 @@ export default function AIChatWidget() {
                 </div>
               </div>
             )}
+          </div>
+
+          {/* Quick Match Button */}
+          <div className="px-3 pt-2 bg-white">
+            <button
+              onClick={handleQuickMatch}
+              disabled={isTyping}
+              className="w-full bg-gradient-to-r from-orange-500 to-pink-500 text-white py-2 px-4 rounded-xl hover:from-orange-600 hover:to-pink-600 transition flex items-center justify-center gap-2 font-semibold text-sm disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+            >
+              <Zap size={16} />
+              Quick Match - Surprise Me!
+            </button>
           </div>
 
           {/* Input Area */}

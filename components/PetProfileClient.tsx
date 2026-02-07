@@ -310,9 +310,28 @@ export default function PetProfileClient({ pet }: { pet: Pet }) {
             <h3 className="text-xl font-bold text-slate-900 mb-4 flex items-center gap-2">
                 <ShieldCheck className="text-green-500" /> {pet.name}&apos;s Story
             </h3>
-            <p className="text-lg text-slate-600 leading-relaxed mb-10 whitespace-pre-wrap">
-                {pet.description}
+            
+            <p className="text-lg text-slate-600 leading-relaxed mb-6 whitespace-pre-wrap">
+                {pet.aiBio || pet.description}
             </p>
+
+            {/* Shelter Notes - Original description from shelter staff */}
+            {pet.shelterNotes && pet.shelterNotes !== pet.aiBio && (
+              <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6 mb-10">
+                <h4 className="text-md font-bold text-amber-800 mb-3 flex items-center gap-2">
+                  <FileText size={18} className="text-amber-600" />
+                  Shelter Notes
+                </h4>
+                <p className="text-amber-900/80 leading-relaxed whitespace-pre-wrap">
+                  {pet.shelterNotes}
+                </p>
+              </div>
+            )}
+
+            {/* Spacer if no shelter notes */}
+            {(!pet.shelterNotes || pet.shelterNotes === pet.aiBio) && (
+              <div className="mb-4" />
+            )}
 
             {/* SHELTER/ORGANIZATION SECTION */}
             {pet.organization ? (

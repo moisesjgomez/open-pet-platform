@@ -25,8 +25,14 @@ export default function AdoptionFormModal({ pet, onClose }: Props) {
 
   if (step === 3) {
     return (
-      <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50 backdrop-blur-sm animate-in fade-in">
-        <div className="bg-white rounded-3xl w-full max-w-md p-8 text-center shadow-2xl relative overflow-hidden">
+      <div 
+        className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50 backdrop-blur-sm animate-in fade-in"
+        onClick={onClose}
+      >
+        <div 
+          className="bg-white rounded-3xl w-full max-w-md p-8 text-center shadow-2xl relative overflow-hidden"
+          onClick={(e) => e.stopPropagation()}
+        >
           <div className="absolute top-0 left-0 w-full h-2 bg-green-500"></div>
           <div className="mx-auto w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-6 animate-bounce">
             <CheckCircle size={40} />
@@ -44,8 +50,14 @@ export default function AdoptionFormModal({ pet, onClose }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
-      <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+    <div 
+      className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div 
+        className="bg-white rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+        onClick={(e) => e.stopPropagation()}
+      >
         
         {/* Header */}
         <div className="bg-slate-50 p-6 border-b border-gray-100 flex justify-between items-center">

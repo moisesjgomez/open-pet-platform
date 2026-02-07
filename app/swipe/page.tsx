@@ -6,7 +6,7 @@ import { PetRepository } from '@/lib/repository'; // Use Real Repo
 import SwipeCard from '@/components/SwipeCard';
 import SwipeFilterPanel from '@/components/SwipeFilterPanel';
 import { UserPreferences } from '@/components/MatchProfileModal';
-import { Heart, Filter } from 'lucide-react';
+import { Heart, Filter, Home } from 'lucide-react';
 import Link from 'next/link';
 import { loadProfile, updatePreferences, saveProfile, UserAIProfile } from '@/lib/ai/learning-engine';
 
@@ -75,9 +75,10 @@ export default function SwipePage() {
   // 1. Load AI Profile and Pets on startup
   useEffect(() => {
     const loadPets = async () => {
-      const { BuffaloAdapter } = await import('@/lib/adapters/buffalo');
-      const adapter = new BuffaloAdapter();
-      const fetchedPets = await adapter.getAllPets();
+      // Use PetRepository for enriched pets with AI-generated first-person bios
+      const { PetRepository } = await import('@/lib/repository');
+      const repo = new PetRepository();
+      const fetchedPets = await repo.getSmartPets();
       setAllPets(fetchedPets);
       
       // Load AI Profile
@@ -221,9 +222,9 @@ export default function SwipePage() {
       />
 
       {/* Header */}
-      <div className="absolute top-4 left-0 w-full flex justify-between items-center px-6 z-10">
+      <div className="absolute top-4 left-0 w-full flex justify-between items-center px-6 z-40">
          <Link href="/" className="p-2 bg-white/50 backdrop-blur rounded-full hover:bg-white transition">
-            <Heart size={20} className="text-slate-600" />
+            <Home size={20} className="text-slate-600" />
          </Link>
          <h1 className="text-xl font-bold text-slate-400 uppercase tracking-widest">Discover</h1>
          <button 

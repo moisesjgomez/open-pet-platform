@@ -157,6 +157,10 @@ export class PetfinderAdapter implements PetDataSource {
     const images = animal.photos.map(p => p.large || p.medium || p.full);
     const primaryImage = images[0] || 'https://via.placeholder.com/400x400?text=No+Photo';
 
+    // Store original shelter description for "Shelter Notes" section
+    const originalDescription = animal.description;
+    const hasRealDescription = !!originalDescription && originalDescription.length > 10;
+
     return {
       id: String(animal.id),
       name: animal.name,
@@ -167,6 +171,8 @@ export class PetfinderAdapter implements PetDataSource {
       imageUrl: primaryImage,
       images: images.length > 0 ? images : undefined,
       description: animal.description || `${animal.name} is looking for a forever home!`,
+      shelterNotes: hasRealDescription ? originalDescription : undefined,
+      isSyntheticDescription: !hasRealDescription,
       tags,
       daysInShelter,
       location: `${animal.contact.address.city}, ${animal.contact.address.state}`,
