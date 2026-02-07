@@ -1,0 +1,243 @@
+import { Pet, PetDataSource } from './base';
+
+export class MockAdapter implements PetDataSource {
+  private pets: Pet[] = [
+      // --- DOGS ---
+      {
+        id: '1',
+        name: 'Bandit',
+        breed: 'Blue Heeler Mix',
+        status: 'Available',
+        sex: 'Male',
+        age: '2 years',
+        description: 'Bandit is full of energy and loves frisbees. He needs an active owner.',
+        imageUrl: 'https://images.unsplash.com/photo-1517849845537-4d257902454a?auto=format&fit=crop&w=800',
+        tags: ['High Energy', 'Hiking Buddy'],
+        daysInShelter: 5,
+        location: 'Mock Shelter, TX',
+        energyLevel: 'High',
+        size: 'Medium',
+        compatibility: { kids: true, dogs: true, cats: false }
+      },
+      {
+        id: '4',
+        name: 'Rex',
+        breed: 'German Shepherd',
+        status: 'Available',
+        sex: 'Male',
+        age: '9 years',
+        description: 'Rex is a gentle grandpa looking for a quiet porch.',
+        imageUrl: 'https://images.unsplash.com/photo-1589941013453-ec89f33b5e95?auto=format&fit=crop&w=800',
+        tags: ['Senior', 'Chill'],
+        daysInShelter: 145,
+        location: 'Mock Shelter, TX',
+        energyLevel: 'Low',
+        size: 'Large',
+        compatibility: { kids: true, dogs: true, cats: true }
+      },
+      {
+        id: '5',
+        name: 'Pip',
+        breed: 'Jack Russell',
+        status: 'Available',
+        sex: 'Male',
+        age: '1 year',
+        description: 'Small but mighty! Pip loves to dig.',
+        imageUrl: 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&w=800',
+        tags: ['Small', 'High Energy'],
+        daysInShelter: 20,
+        location: 'Mock Shelter, TX',
+        energyLevel: 'High',
+        size: 'Small',
+        compatibility: { kids: false, dogs: true, cats: false }
+      },
+      {
+        id: '7',
+        name: 'Thor',
+        breed: 'Husky',
+        status: 'Available',
+        sex: 'Male',
+        age: '3 years',
+        description: 'Thor talks a lot. He sings the song of his people.',
+        imageUrl: 'https://images.unsplash.com/photo-1560743641-691c7705cf63?auto=format&fit=crop&w=800',
+        tags: ['Vocal', 'Sheds a Lot'],
+        daysInShelter: 60,
+        location: 'Mock Shelter, TX',
+        energyLevel: 'High',
+        size: 'Large',
+        compatibility: { kids: true, dogs: true, cats: false }
+      },
+      {
+        id: '9',
+        name: 'Daisy',
+        breed: 'Pit Bull Mix',
+        status: 'Available',
+        sex: 'Female',
+        age: '4 years',
+        description: 'Daisy is a giant marshmallow who thinks she is a lap dog.',
+        imageUrl: 'https://images.unsplash.com/photo-1561037404-61cd46aa615b?auto=format&fit=crop&w=800',
+        tags: ['Couch Potato', 'Strong'],
+        daysInShelter: 10,
+        location: 'Mock Shelter, TX',
+        energyLevel: 'Low',
+        size: 'Large',
+        compatibility: { kids: true, dogs: true, cats: true }
+      },
+      {
+        id: '10',
+        name: 'Chip',
+        breed: 'Beagle',
+        status: 'Available',
+        sex: 'Male',
+        age: '5 years',
+        description: 'Chip must be adopted with his brother, Dale.',
+        imageUrl: 'https://images.unsplash.com/photo-1537151608828-ea2b11777ee8?auto=format&fit=crop&w=800',
+        tags: ['Bonded Pair', 'Vocal'],
+        daysInShelter: 35,
+        location: 'Mock Shelter, TX',
+        energyLevel: 'Moderate',
+        size: 'Medium',
+        compatibility: { kids: true, dogs: true, cats: false }
+      },
+      {
+        id: '11',
+        name: 'Bear',
+        breed: 'Newfoundland',
+        status: 'Pending',
+        sex: 'Male',
+        age: '5 years',
+        description: 'A gentle giant who loves water.',
+        imageUrl: 'https://images.unsplash.com/photo-1544568100-847a948585b9?auto=format&fit=crop&w=800',
+        tags: ['Large', 'Chill'],
+        daysInShelter: 2,
+        location: 'Mock Shelter, TX',
+        energyLevel: 'Low',
+        size: 'Extra Large',
+        compatibility: { kids: true, dogs: true, cats: true }
+      },
+      {
+        id: '12',
+        name: 'Coco',
+        breed: 'Poodle Mix',
+        status: 'Available',
+        sex: 'Female',
+        age: '2 years',
+        description: 'Hypoallergenic and super smart.',
+        imageUrl: 'https://images.unsplash.com/photo-1591769225440-811ad7d6eca6?auto=format&fit=crop&w=800',
+        tags: ['Small', 'Smart'],
+        daysInShelter: 12,
+        location: 'Mock Shelter, TX',
+        energyLevel: 'Moderate',
+        size: 'Small',
+        compatibility: { kids: true, dogs: true, cats: true }
+      },
+      // --- CATS ---
+      {
+        id: '2',
+        name: 'Luna',
+        breed: 'Siamese',
+        status: 'Available',
+        sex: 'Female',
+        age: '1 year',
+        description: 'Luna is a vocal princess who demands attention.',
+        imageUrl: 'https://images.unsplash.com/photo-1513245543132-31f507417b26?auto=format&fit=crop&w=800',
+        tags: ['Vocal', 'Indoor Only'],
+        daysInShelter: 45,
+        location: 'Mock Shelter, TX',
+        energyLevel: 'Moderate',
+        size: 'Small',
+        compatibility: { kids: true, dogs: false, cats: true }
+      },
+      {
+        id: '3',
+        name: 'Oliver',
+        breed: 'Orange Tabby',
+        status: 'Available',
+        sex: 'Male',
+        age: '5 years',
+        description: 'Oliver loves lasagna and sleeping in sunbeams.',
+        imageUrl: 'https://images.unsplash.com/photo-1574158622682-e40e69881006?auto=format&fit=crop&w=800',
+        tags: ['Chill', 'Food Motivated'],
+        daysInShelter: 8,
+        location: 'Mock Shelter, TX',
+        energyLevel: 'Low',
+        size: 'Medium',
+        compatibility: { kids: true, dogs: true, cats: true }
+      },
+      {
+        id: '6',
+        name: 'Mittens',
+        breed: 'Tuxedo Cat',
+        status: 'Available',
+        sex: 'Female',
+        age: '8 weeks',
+        description: 'A tiny kitten with a big personality.',
+        imageUrl: 'https://images.unsplash.com/photo-1561948955-570b270e7c36?auto=format&fit=crop&w=800',
+        tags: ['Kitten', 'Playful'],
+        daysInShelter: 3,
+        location: 'Mock Shelter, TX',
+        energyLevel: 'High',
+        size: 'Small',
+        compatibility: { kids: true, dogs: true, cats: true }
+      },
+      {
+        id: '8',
+        name: 'Shadow',
+        breed: 'Black Cat',
+        status: 'Available',
+        sex: 'Male',
+        age: '2 years',
+        description: 'Shadow is a ninja. You will never see him coming.',
+        imageUrl: 'https://images.unsplash.com/photo-1557246565-8a3d3ab5d7f6?auto=format&fit=crop&w=800',
+        tags: ['Shy', 'Independent'],
+        daysInShelter: 90,
+        location: 'Mock Shelter, TX',
+        energyLevel: 'Low',
+        size: 'Medium',
+        compatibility: { kids: false, dogs: false, cats: true }
+      },
+      {
+        id: '13',
+        name: 'Simba',
+        breed: 'Maine Coon Mix',
+        status: 'Available',
+        sex: 'Male',
+        age: '3 years',
+        description: 'A majestic lion of a cat. Very fluffy.',
+        imageUrl: 'https://images.unsplash.com/photo-1533738363-b7f9aef128ce?auto=format&fit=crop&w=800',
+        tags: ['Large', 'Fluffy'],
+        daysInShelter: 15,
+        location: 'Mock Shelter, TX',
+        energyLevel: 'Moderate',
+        size: 'Large',
+        compatibility: { kids: true, dogs: true, cats: true }
+      },
+      {
+        id: '14',
+        name: 'Bella',
+        breed: 'Calico',
+        status: 'Available',
+        sex: 'Female',
+        age: '6 years',
+        description: 'Bella is the queen of the house. She tolerates humans.',
+        imageUrl: 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&w=800',
+        tags: ['Independent', 'Sassy'],
+        daysInShelter: 55,
+        location: 'Mock Shelter, TX',
+        energyLevel: 'Low',
+        size: 'Medium',
+        compatibility: { kids: false, dogs: false, cats: false }
+      },
+  ];
+
+  async getAllPets(): Promise<Pet[]> {
+    // Simulate network delay
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    return this.pets;
+  }
+
+  async getPet(id: string): Promise<Pet | null> {
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    return this.pets.find((p) => p.id === id) || null;
+  }
+}
