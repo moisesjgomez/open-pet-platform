@@ -182,8 +182,8 @@ export async function getCacheStats(): Promise<{
     return {
       totalEntries: total,
       byType: byType.reduce(
-        (acc, item) => ({ ...acc, [item.cacheType]: item._count }),
-        {}
+        (acc: Record<string, number>, item: { cacheType: string; _count: number }) => ({ ...acc, [item.cacheType]: item._count }),
+        {} as Record<string, number>
       ),
       totalTokensSaved: tokenStats._sum.tokensUsed || 0,
     };
