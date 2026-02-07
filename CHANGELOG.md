@@ -112,12 +112,17 @@ All notable changes to this project will be documented in this file.
 
 ## Deployment History
 
-### 2026-02-06 - Preparing for Azure App Service Deployment
-- Created GitHub Actions workflow for Azure App Service (not Static Web Apps)
-- Updated deployment documentation for full Next.js support
-- Configured next.config.ts to keep ISR capabilities
-- Ready for production deployment on Azure App Service Basic B1 tier
+### 2026-02-06 - Azure App Service Deployment Complete
+- ✅ Created GitHub Actions workflow for Azure App Service
+- ✅ Set up Azure Bicep infrastructure as code templates
+- ✅ Deployed to Azure App Service in Canada Central region
+- ✅ Configured GitHub Actions CI/CD with publish profile authentication
+- ✅ Fixed deprecated GitHub Actions (updated to v4)
+- ✅ Added startup script for proper Node.js initialization
+- ✅ Enabled basic auth for publish profile access
+- **Site URL**: https://openpet.azurewebsites.net
 - **Why App Service**: App uses Next.js ISR (`revalidate`) and server-side data fetching
+- **Cost**: Basic B1 tier (~$13/month) in Canada Central
 
 ---
 
