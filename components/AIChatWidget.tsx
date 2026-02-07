@@ -3,9 +3,36 @@
 import { useState, useRef, useEffect } from 'react';
 import { X, Send, Sparkles, Bot, RotateCcw, Zap } from 'lucide-react';
 import { Pet } from '@/lib/adapters/base';
-import { ConversationState, createInitialState } from '@/lib/services/ai';
 import Image from 'next/image';
 import Link from 'next/link';
+
+// Define types locally to avoid importing server-side code
+interface UserProfile {
+  species?: 'dog' | 'cat' | 'any';
+  energyLevel?: 'active' | 'relaxed' | 'moderate';
+  housing?: 'apartment' | 'house' | 'yard';
+  hasKids?: boolean;
+  hasOtherPets?: boolean;
+  preferredSize?: 'small' | 'medium' | 'large' | 'any';
+  preferredAge?: 'puppy' | 'adult' | 'senior' | 'any';
+}
+
+interface ConversationState {
+  stage: 'greeting' | 'species' | 'lifestyle' | 'living' | 'preferences' | 'matching' | 'followup';
+  profile: UserProfile;
+  messageHistory: Array<{ role: 'user' | 'bot'; text: string }>;
+  matchedPetIds: string[];
+  isQuickMatch?: boolean;
+}
+
+function createInitialState(): ConversationState {
+  return {
+    stage: 'greeting',
+    profile: {},
+    messageHistory: [],
+    matchedPetIds: [],
+  };
+}
 
 interface Message {
   role: 'bot' | 'user';
