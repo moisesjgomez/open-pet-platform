@@ -1,8 +1,10 @@
 'use client'; // This tells Next.js this code runs in the browser (needed for animations)
 
 import { motion, useMotionValue, useTransform, useAnimation } from 'framer-motion';
+import { useRouter } from 'next/navigation';
 import { Pet } from '@/lib/adapters/base';
-import { X, Heart, Zap, Ruler, Users, PawPrint, Sparkles } from 'lucide-react';
+import { X, Heart, Zap, Ruler, Users, PawPrint, Sparkles, Info } from 'lucide-react';
+import { useRef } from 'react';
 
 interface Props {
   pet: Pet;
@@ -10,8 +12,10 @@ interface Props {
 }
 
 export default function SwipeCard({ pet, onSwipe }: Props) {
+  const router = useRouter();
   const controls = useAnimation();
   const x = useMotionValue(0); // Tracks how far left/right you dragged
+  const dragStartX = useRef(0); // Track where drag started to detect clicks vs drags
   
   // PHYSICS:
   // 1. Rotation: As you drag X (left/right), rotate the card slightly (-25deg to 25deg)
@@ -20,6 +24,18 @@ export default function SwipeCard({ pet, onSwipe }: Props) {
   // 2. Stamps: Show "NOPE" or "LIKE" opacity based on drag distance
   const opacityLike = useTransform(x, [50, 150], [0, 1]);
   const opacityNope = useTransform(x, [-50, -150], [0, 1]);
+
+  const handleDragStart = () => {
+    dragStartX.current = x.get();
+  };
+
+  const handleCardClick = () => {
+    // Only navigate if the card wasn't dragged (click vs drag detection)
+    const dragDistance = Math.abs(x.get() - dragStartX.current);
+    if (dragDistance < 10) {
+      router.push(`/pet/${pet.id}`);
+    }
+  };
 
   const handleDragEnd = async (event: any, info: any) => {
     const offset = info.offset.x;
@@ -42,7 +58,9 @@ export default function SwipeCard({ pet, onSwipe }: Props) {
       <motion.div
         drag="x" // Enable dragging ONLY on X axis
         dragConstraints={{ left: 0, right: 0 }}
+        onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
+        onClick={handleCardClick}
         animate={controls}
         style={{ x, rotate }}
         className="relative w-full max-w-sm h-[600px] bg-white rounded-3xl shadow-2xl cursor-grab active:cursor-grabbing overflow-hidden border border-gray-200"
@@ -55,6 +73,18 @@ export default function SwipeCard({ pet, onSwipe }: Props) {
              alt={pet.name} 
              className="w-full h-full object-cover pointer-events-none" // pointer-events-none prevents dragging the image itself
            />
+           
+           {/* Info button - tap to see profile */}
+           <button
+             onClick={(e) => {
+               e.stopPropagation();
+               router.push(`/pet/${pet.id}`);
+             }}
+             className="absolute bottom-4 right-4 p-3 bg-white/90 backdrop-blur-sm rounded-full shadow-lg hover:scale-110 transition text-gray-700"
+             title="View full profile"
+           >
+             <Info size={24} />
+           </button>
            
            {/* The "Like" Stamp (Hidden until dragged right) */}
            <motion.div style={{ opacity: opacityLike }} className="absolute top-8 left-8 border-4 border-green-500 text-green-500 font-bold text-4xl px-4 py-2 rounded-lg transform -rotate-12 bg-white/80">
