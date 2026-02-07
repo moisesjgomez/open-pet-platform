@@ -6,7 +6,7 @@
       "value": "open-pet-platform"
     },
     "location": {
-      "value": "eastus"
+      "value": "westus2"
     },
     "appServicePlanSku": {
       "value": "B1"

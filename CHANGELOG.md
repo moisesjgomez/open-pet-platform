@@ -4,6 +4,23 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [1.0.0] - 2026-02-07
+
+### Deployment
+- **Azure Container Apps**: Successfully deployed to production
+  - URL: https://openpet.whitesand-a94250e7.canadacentral.azurecontainerapps.io/
+  - Using Azure Container Registry for image storage
+  - Scale-to-zero enabled (0-3 replicas)
+  - Consumption-based pricing for cost efficiency
+  
+### Infrastructure
+- Added `Dockerfile` with multi-stage build (node:22-alpine)
+- Added `.dockerignore` for efficient builds
+- Created Azure Container Registry (openpetregistry)
+- Created Container Apps environment (openpet-env)
+
+---
+
 ## [Unreleased] - 2026-02-06
 
 ### Added

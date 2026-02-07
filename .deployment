@@ -1,0 +1,15 @@
+{
+  "version": 2,
+  "outputDirectory": ".next",
+  "build": {
+    "env": {
+      "NODE_ENV": "production"
+    }
+  },
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/"
+    }
+  ]
+}
