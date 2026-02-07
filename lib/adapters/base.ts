@@ -1,5 +1,28 @@
 // lib/adapters/base.ts
 
+// Organization/Shelter Information
+export interface Organization {
+  id: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  website?: string;
+  adoptionPolicy?: string;
+  hours?: string;
+}
+
+// Health Information
+export interface HealthInfo {
+  spayedNeutered: boolean;
+  vaccinated: boolean;
+  microchipped: boolean;
+  specialNeeds: boolean;
+  specialNeedsDescription?: string;
+}
+
 // 1. The "Interface" (The Shape of the Data)
 // We are saying: "Every single pet MUST have these fields."
 export interface Pet {
@@ -13,19 +36,40 @@ export interface Pet {
   description: string;
   tags: string[];
   daysInShelter: number;
-  location: string; // NEW: Location field
+  location: string;
   
-  // NEW: Gallery Support
+  // Gallery Support
   images?: string[];
+  
+  // Distance from user (for location-based search)
+  distance?: number;
 
-  // NEW: Structured Data for Filters
+  // Physical Traits
   energyLevel?: 'Low' | 'Moderate' | 'High';
   size?: 'Small' | 'Medium' | 'Large' | 'Extra Large';
+  color?: string;
+  coatLength?: 'Hairless' | 'Short' | 'Medium' | 'Long';
+  
+  // Compatibility
   compatibility?: {
-    kids: boolean;
-    dogs: boolean;
-    cats: boolean;
+    kids: boolean | null;
+    dogs: boolean | null;
+    cats: boolean | null;
+    otherAnimals?: boolean | null;
   };
+  
+  // Health Information
+  health?: HealthInfo;
+  
+  // Care & Behavior
+  houseTrained?: boolean;
+  declawed?: boolean; // For cats
+  goodOnLeash?: boolean; // For dogs
+  crateTrainer?: boolean;
+  specialDiet?: boolean;
+  
+  // Organization/Shelter
+  organization?: Organization;
 }
 
 // 2. The "Contract" (The Rule for Data Sources)

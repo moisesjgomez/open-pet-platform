@@ -4,8 +4,51 @@ import { useState } from 'react';
 import { Pet } from '@/lib/adapters/base';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ArrowLeft, MapPin, Share2, Heart, ShieldCheck, Sparkles, ChevronLeft, ChevronRight, Copy, Check, X } from 'lucide-react';
+import { 
+  ArrowLeft, MapPin, Share2, Heart, ShieldCheck, Sparkles, 
+  ChevronLeft, ChevronRight, Copy, Check, X, 
+  Ruler, Palette, Scissors, Zap, Baby, Dog, Cat, HelpCircle,
+  Syringe, CircleCheck, CircleX, Phone, Mail, Globe, Clock,
+  FileText, MessageCircle
+} from 'lucide-react';
 import AdoptionFormModal from '@/components/AdoptionFormModal';
+
+// Helper component for compatibility icons
+function CompatibilityIcon({ value, label, icon: Icon }: { value: boolean | null | undefined, label: string, icon: React.ElementType }) {
+  const getStatus = () => {
+    if (value === true) return { color: 'text-green-600 bg-green-50 border-green-200', icon: CircleCheck, text: 'Yes' };
+    if (value === false) return { color: 'text-red-500 bg-red-50 border-red-200', icon: CircleX, text: 'No' };
+    return { color: 'text-gray-400 bg-gray-50 border-gray-200', icon: HelpCircle, text: 'Unknown' };
+  };
+  
+  const status = getStatus();
+  const StatusIcon = status.icon;
+  
+  return (
+    <div className={`flex flex-col items-center p-4 rounded-xl border ${status.color}`}>
+      <Icon size={24} className="mb-2" />
+      <span className="text-xs font-bold uppercase tracking-wide mb-1">{label}</span>
+      <div className="flex items-center gap-1">
+        <StatusIcon size={16} />
+        <span className="text-sm font-bold">{status.text}</span>
+      </div>
+    </div>
+  );
+}
+
+// Helper component for health status
+function HealthItem({ value, label }: { value: boolean | undefined, label: string }) {
+  return (
+    <div className="flex items-center gap-3">
+      {value ? (
+        <CircleCheck size={20} className="text-green-500" />
+      ) : (
+        <CircleX size={20} className="text-gray-300" />
+      )}
+      <span className={`font-medium ${value ? 'text-slate-700' : 'text-gray-400'}`}>{label}</span>
+    </div>
+  );
+}
 
 export default function PetProfileClient({ pet }: { pet: Pet }) {
   const [showForm, setShowForm] = useState(false);
@@ -183,25 +226,197 @@ export default function PetProfileClient({ pet }: { pet: Pet }) {
                 ))}
             </div>
 
+            {/* PHYSICAL TRAITS SECTION */}
+            <div className="mb-10">
+              <h3 className="text-lg font-bold text-slate-900 mb-4">Physical Traits</h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {pet.size && (
+                  <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl border border-gray-200">
+                    <Ruler className="text-blue-500" size={20} />
+                    <div>
+                      <div className="text-xs text-gray-500 font-medium">Size</div>
+                      <div className="font-bold text-slate-900">{pet.size}</div>
+                    </div>
+                  </div>
+                )}
+                {pet.color && (
+                  <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl border border-gray-200">
+                    <Palette className="text-purple-500" size={20} />
+                    <div>
+                      <div className="text-xs text-gray-500 font-medium">Color</div>
+                      <div className="font-bold text-slate-900">{pet.color}</div>
+                    </div>
+                  </div>
+                )}
+                {pet.coatLength && (
+                  <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl border border-gray-200">
+                    <Scissors className="text-amber-500" size={20} />
+                    <div>
+                      <div className="text-xs text-gray-500 font-medium">Coat</div>
+                      <div className="font-bold text-slate-900">{pet.coatLength}</div>
+                    </div>
+                  </div>
+                )}
+                {pet.energyLevel && (
+                  <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl border border-gray-200">
+                    <Zap className={`${pet.energyLevel === 'High' ? 'text-orange-500' : pet.energyLevel === 'Moderate' ? 'text-yellow-500' : 'text-green-500'}`} size={20} />
+                    <div>
+                      <div className="text-xs text-gray-500 font-medium">Energy</div>
+                      <div className="font-bold text-slate-900">{pet.energyLevel}</div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* COMPATIBILITY SECTION */}
+            {pet.compatibility && (
+              <div className="mb-10">
+                <h3 className="text-lg font-bold text-slate-900 mb-4">{pet.name}&apos;s Compatibility</h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <CompatibilityIcon value={pet.compatibility.kids} label="Kids" icon={Baby} />
+                  <CompatibilityIcon value={pet.compatibility.dogs} label="Dogs" icon={Dog} />
+                  <CompatibilityIcon value={pet.compatibility.cats} label="Cats" icon={Cat} />
+                  <CompatibilityIcon value={pet.compatibility.otherAnimals} label="Other Animals" icon={HelpCircle} />
+                </div>
+              </div>
+            )}
+
+            {/* HEALTH INFO SECTION */}
+            {pet.health && (
+              <div className="mb-10">
+                <h3 className="text-lg font-bold text-slate-900 mb-4">Health</h3>
+                <div className="bg-gray-50 rounded-2xl p-6 border border-gray-200">
+                  <div className="grid grid-cols-2 gap-4">
+                    <HealthItem value={pet.health.spayedNeutered} label="Spayed/Neutered" />
+                    <HealthItem value={pet.health.vaccinated} label="Vaccinated" />
+                    <HealthItem value={pet.health.microchipped} label="Microchipped" />
+                    <HealthItem value={pet.houseTrained} label="House Trained" />
+                  </div>
+                  {pet.health.specialNeeds && pet.health.specialNeedsDescription && (
+                    <div className="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-xl">
+                      <div className="flex items-center gap-2 text-amber-700 font-bold mb-2">
+                        <Syringe size={18} />
+                        Special Needs
+                      </div>
+                      <p className="text-amber-600 text-sm">{pet.health.specialNeedsDescription}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Bio */}
             <h3 className="text-xl font-bold text-slate-900 mb-4 flex items-center gap-2">
-                <ShieldCheck className="text-green-500" /> About {pet.name}
+                <ShieldCheck className="text-green-500" /> {pet.name}&apos;s Story
             </h3>
             <p className="text-lg text-slate-600 leading-relaxed mb-10 whitespace-pre-wrap">
                 {pet.description}
             </p>
 
-            {/* Location */}
-            <div className="bg-gray-50 rounded-2xl p-6 flex items-start gap-4 border border-gray-200 mb-10">
+            {/* SHELTER/ORGANIZATION SECTION */}
+            {pet.organization ? (
+              <div className="bg-gradient-to-br from-gray-50 to-slate-50 rounded-2xl p-6 border border-gray-200 mb-10">
+                <h3 className="text-lg font-bold text-slate-900 mb-4">{pet.name} is from {pet.organization.name}</h3>
+                
+                <div className="grid md:grid-cols-2 gap-4 mb-6">
+                  {pet.organization.address && (
+                    <div className="flex items-start gap-3">
+                      <MapPin className="text-gray-400 mt-1" size={18} />
+                      <div>
+                        <div className="text-sm text-gray-500">Address</div>
+                        <div className="font-medium text-slate-900">{pet.organization.address}</div>
+                      </div>
+                    </div>
+                  )}
+                  {pet.organization.phone && (
+                    <div className="flex items-start gap-3">
+                      <Phone className="text-gray-400 mt-1" size={18} />
+                      <div>
+                        <div className="text-sm text-gray-500">Phone</div>
+                        <a href={`tel:${pet.organization.phone}`} className="font-medium text-blue-600 hover:underline">{pet.organization.phone}</a>
+                      </div>
+                    </div>
+                  )}
+                  {pet.organization.email && (
+                    <div className="flex items-start gap-3">
+                      <Mail className="text-gray-400 mt-1" size={18} />
+                      <div>
+                        <div className="text-sm text-gray-500">Email</div>
+                        <a href={`mailto:${pet.organization.email}`} className="font-medium text-blue-600 hover:underline">{pet.organization.email}</a>
+                      </div>
+                    </div>
+                  )}
+                  {pet.organization.hours && (
+                    <div className="flex items-start gap-3">
+                      <Clock className="text-gray-400 mt-1" size={18} />
+                      <div>
+                        <div className="text-sm text-gray-500">Hours</div>
+                        <div className="font-medium text-slate-900">{pet.organization.hours}</div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {pet.organization.adoptionPolicy && (
+                  <div className="bg-white rounded-xl p-4 border border-gray-200">
+                    <div className="flex items-center gap-2 text-slate-700 font-bold mb-2">
+                      <FileText size={18} />
+                      Adoption Policy
+                    </div>
+                    <p className="text-gray-600 text-sm leading-relaxed">{pet.organization.adoptionPolicy}</p>
+                  </div>
+                )}
+
+                {pet.organization.website && (
+                  <a 
+                    href={pet.organization.website} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 mt-4 text-blue-600 font-bold hover:underline"
+                  >
+                    <Globe size={18} />
+                    Visit Website
+                  </a>
+                )}
+              </div>
+            ) : (
+              /* Fallback location display */
+              <div className="bg-gray-50 rounded-2xl p-6 flex items-start gap-4 border border-gray-200 mb-10">
                 <MapPin className="text-gray-400 mt-1" />
                 <div>
                     <h4 className="font-bold text-slate-900">{pet.location}</h4>
                     <p className="text-gray-500 text-sm">Adoption Center</p>
-                    <div className="flex gap-4 mt-3 text-sm font-bold text-blue-600">
-                        <button className="hover:underline">View on Map</button>
-                        <button className="hover:underline">Shelter Hours</button>
-                    </div>
                 </div>
+              </div>
+            )}
+
+            {/* HOW TO ADOPT SECTION */}
+            <div className="mb-10">
+              <h3 className="text-lg font-bold text-slate-900 mb-4">How to Adopt {pet.name}</h3>
+              <div className="space-y-4">
+                <div className="flex gap-4">
+                  <div className="flex-shrink-0 w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold">1</div>
+                  <div>
+                    <h4 className="font-bold text-slate-900">Start Your Inquiry</h4>
+                    <p className="text-gray-600 text-sm">Click the Adopt button below to share some preliminary details with the shelter.</p>
+                  </div>
+                </div>
+                <div className="flex gap-4">
+                  <div className="flex-shrink-0 w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold">2</div>
+                  <div>
+                    <h4 className="font-bold text-slate-900">Application Review</h4>
+                    <p className="text-gray-600 text-sm">The shelter will review your information and may ask for additional details or an official application.</p>
+                  </div>
+                </div>
+                <div className="flex gap-4">
+                  <div className="flex-shrink-0 w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold">3</div>
+                  <div>
+                    <h4 className="font-bold text-slate-900">Meet & Greet</h4>
+                    <p className="text-gray-600 text-sm">If you&apos;re a match, the shelter will reach out to schedule a meeting with {pet.name}!</p>
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* Action Buttons */}
@@ -213,7 +428,8 @@ export default function PetProfileClient({ pet }: { pet: Pet }) {
                     <Heart fill="currentColor" className="text-red-500" />
                     Adopt {pet.name}
                 </button>
-                <button className="px-8 py-4 border-2 border-gray-200 text-slate-700 font-bold rounded-xl hover:border-slate-900 transition">
+                <button className="px-8 py-4 border-2 border-gray-200 text-slate-700 font-bold rounded-xl hover:border-slate-900 transition flex items-center justify-center gap-2">
+                    <MessageCircle size={20} />
                     Ask a Question
                 </button>
             </div>

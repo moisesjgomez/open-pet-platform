@@ -11,6 +11,9 @@ export default async function Home() {
   
   // 2. Fetch the "Smart" pets (includes AI tags automatically)
   const pets = await repo.getSmartPets();
+  
+  // 3. Check if location search is available (Petfinder API configured)
+  const locationSearchEnabled = repo.isLocationSearchEnabled();
 
   return (
     <main className="min-h-screen bg-gray-50">
@@ -52,7 +55,7 @@ export default async function Home() {
       <UrgentBanner pets={pets} />
 
       {/* 3. THE EXPLORER */}
-      <PetExplorer initialPets={pets} />
+      <PetExplorer initialPets={pets} locationSearchEnabled={locationSearchEnabled} />
 
     </main>
   );

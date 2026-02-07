@@ -1,12 +1,50 @@
 'use client';
 
 import { Pet } from '@/lib/adapters/base';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Search, Dog, Cat, LayoutGrid, List, Grid3x3, SlidersHorizontal, X, Check, UserCircle, Sparkles } from 'lucide-react';
+import { Search, Dog, Cat, LayoutGrid, List, Grid3x3, SlidersHorizontal, X, Check, UserCircle, Sparkles, MapPin, Navigation, Loader2, RotateCcw, Baby, Users, Zap } from 'lucide-react';
 import MatchProfileModal, { UserPreferences } from './MatchProfileModal'; // Import the new modal
 import { loadProfile, getRecommendedPets } from '@/lib/ai/learning-engine';
+import { 
+  getCachedLocation, 
+  getUserLocation, 
+  getLocationString, 
+  createLocationFromZip,
+  clearCachedLocation,
+  isGeolocationSupported,
+  type UserLocation 
+} from '@/lib/location';
+
+// Filter state interface for persistence
+interface FilterState {
+  ageFilter: string;
+  sizeFilter: string;
+  genderFilter: string;
+  coatFilter: string;
+  energyFilter: string;
+  goodWithKids: boolean | null;
+  goodWithDogs: boolean | null;
+  goodWithCats: boolean | null;
+  houseTrained: boolean | null;
+  breedSearch: string;
+}
+
+const DEFAULT_FILTERS: FilterState = {
+  ageFilter: 'All',
+  sizeFilter: 'All',
+  genderFilter: 'All',
+  coatFilter: 'All',
+  energyFilter: 'All',
+  goodWithKids: null,
+  goodWithDogs: null,
+  goodWithCats: null,
+  houseTrained: null,
+  breedSearch: '',
+};
+
+const FILTER_STORAGE_KEY = 'pet_explorer_filters';
 
 // Helper for age (reused)
 const getAgeCategory = (ageString: string): string => {
@@ -20,21 +58,67 @@ const getAgeCategory = (ageString: string): string => {
   return 'Adult';
 };
 
-export default function PetExplorer({ initialPets }: { initialPets: Pet[] }) {
+export default function PetExplorer({ initialPets, locationSearchEnabled = false }: { initialPets: Pet[], locationSearchEnabled?: boolean }) {
   // VIEW & UI STATE
   const [viewMode, setViewMode] = useState<'grid' | 'list' | 'panorama'>('grid');
   const [showFilters, setShowFilters] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
 
+  // LOCATION STATE
+  const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
+  const [locationLoading, setLocationLoading] = useState(false);
+  const [distance, setDistance] = useState(25);
+  const [zipInput, setZipInput] = useState('');
+  const [showLocationPrompt, setShowLocationPrompt] = useState(false);
+  const [pets, setPets] = useState<Pet[]>(initialPets);
+  const [petsLoading, setPetsLoading] = useState(false);
+
   // FILTER STATE
   const [searchTerm, setSearchTerm] = useState('');
   const [filterMode, setFilterMode] = useState<'All' | 'Dogs' | 'Cats' | 'Recommended'>('All');
-  const [ageFilter, setAgeFilter] = useState<'All' | 'Baby' | 'Young' | 'Adult' | 'Senior'>('All');
-  const [sizeFilter, setSizeFilter] = useState<'All' | 'Small' | 'Medium' | 'Large'>('All');
-  const [genderFilter, setGenderFilter] = useState<'All' | 'Male' | 'Female'>('All');
+  const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
   
   // USER PREFERENCES (Loaded from local storage)
   const [userPrefs, setUserPrefs] = useState<UserPreferences | null>(null);
+
+  // Calculate unique breeds from pets for the breed filter dropdown
+  const uniqueBreeds = useMemo(() => {
+    const breeds = new Set<string>();
+    pets.forEach(pet => {
+      if (pet.breed) breeds.add(pet.breed);
+    });
+    return Array.from(breeds).sort();
+  }, [pets]);
+
+  // Check if any filters are active
+  const hasActiveFilters = useMemo(() => {
+    return filters.ageFilter !== 'All' ||
+      filters.sizeFilter !== 'All' ||
+      filters.genderFilter !== 'All' ||
+      filters.coatFilter !== 'All' ||
+      filters.energyFilter !== 'All' ||
+      filters.goodWithKids !== null ||
+      filters.goodWithDogs !== null ||
+      filters.goodWithCats !== null ||
+      filters.houseTrained !== null ||
+      filters.breedSearch !== '';
+  }, [filters]);
+
+  // Count active filters
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (filters.ageFilter !== 'All') count++;
+    if (filters.sizeFilter !== 'All') count++;
+    if (filters.genderFilter !== 'All') count++;
+    if (filters.coatFilter !== 'All') count++;
+    if (filters.energyFilter !== 'All') count++;
+    if (filters.goodWithKids !== null) count++;
+    if (filters.goodWithDogs !== null) count++;
+    if (filters.goodWithCats !== null) count++;
+    if (filters.houseTrained !== null) count++;
+    if (filters.breedSearch !== '') count++;
+    return count;
+  }, [filters]);
 
   // Load prefs on startup
   useEffect(() => {
@@ -42,7 +126,96 @@ export default function PetExplorer({ initialPets }: { initialPets: Pet[] }) {
     if (saved) {
         setUserPrefs(JSON.parse(saved));
     }
+    
+    // Load cached location
+    const cachedLocation = getCachedLocation();
+    if (cachedLocation) {
+      setUserLocation(cachedLocation);
+    }
+
+    // Load saved filters
+    const savedFilters = localStorage.getItem(FILTER_STORAGE_KEY);
+    if (savedFilters) {
+      try {
+        setFilters({ ...DEFAULT_FILTERS, ...JSON.parse(savedFilters) });
+      } catch (e) {
+        console.error('Failed to load saved filters:', e);
+      }
+    }
   }, []);
+
+  // Save filters when they change
+  useEffect(() => {
+    localStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify(filters));
+  }, [filters]);
+
+  // Update a single filter
+  const updateFilter = <K extends keyof FilterState>(key: K, value: FilterState[K]) => {
+    setFilters(prev => ({ ...prev, [key]: value }));
+  };
+
+  // Clear all filters
+  const clearAllFilters = () => {
+    setFilters(DEFAULT_FILTERS);
+  };
+
+  // Fetch pets when location changes
+  useEffect(() => {
+    if (userLocation && locationSearchEnabled) {
+      fetchPetsByLocation();
+    }
+  }, [userLocation, distance, locationSearchEnabled]);
+
+  // Fetch pets from API with location
+  const fetchPetsByLocation = async () => {
+    if (!userLocation) return;
+    
+    setPetsLoading(true);
+    try {
+      const locationStr = getLocationString(userLocation);
+      const response = await fetch(`/api/pets?location=${encodeURIComponent(locationStr)}&distance=${distance}`);
+      const data = await response.json();
+      if (data.pets) {
+        setPets(data.pets);
+      }
+    } catch (error) {
+      console.error('Failed to fetch pets:', error);
+    } finally {
+      setPetsLoading(false);
+    }
+  };
+
+  // Request browser location
+  const requestLocation = async () => {
+    setLocationLoading(true);
+    try {
+      const location = await getUserLocation(true);
+      if (location) {
+        setUserLocation(location);
+        setShowLocationPrompt(false);
+      }
+    } catch (error) {
+      console.error('Location error:', error);
+    } finally {
+      setLocationLoading(false);
+    }
+  };
+
+  // Set location from ZIP
+  const setLocationFromZip = () => {
+    if (zipInput.length === 5) {
+      const location = createLocationFromZip(zipInput);
+      setUserLocation(location);
+      setShowLocationPrompt(false);
+    }
+  };
+
+  // Clear location
+  const clearLocation = () => {
+    clearCachedLocation();
+    setUserLocation(null);
+    setPets(initialPets);
+  };
 
   // Save prefs
   const handleSaveProfile = (prefs: UserPreferences) => {
@@ -52,7 +225,7 @@ export default function PetExplorer({ initialPets }: { initialPets: Pet[] }) {
   };
 
   // --- THE FILTERING ENGINE ---
-  let filteredPets = initialPets.filter((pet) => {
+  let filteredPets = pets.filter((pet) => {
     if (pet.status === 'Adopted') return false;
 
     // 1. Search
@@ -70,13 +243,28 @@ export default function PetExplorer({ initialPets }: { initialPets: Pet[] }) {
     // Skip AI filtering here - we'll do it after
     if (filterMode === 'Recommended') matchesMode = true;
     
-    // 3. Additional Filters
-    if (ageFilter !== 'All') {
+    // 3. Basic Filters
+    if (filters.ageFilter !== 'All') {
         const ageCat = getAgeCategory(pet.age);
-        if (ageCat !== ageFilter) return false;
+        if (ageCat !== filters.ageFilter) return false;
     }
-    if (sizeFilter !== 'All' && pet.size !== sizeFilter) return false;
-    if (genderFilter !== 'All' && pet.sex !== genderFilter) return false;
+    if (filters.sizeFilter !== 'All' && pet.size !== filters.sizeFilter) return false;
+    if (filters.genderFilter !== 'All' && pet.sex !== filters.genderFilter) return false;
+
+    // 4. Advanced Filters
+    if (filters.coatFilter !== 'All' && pet.coatLength !== filters.coatFilter) return false;
+    if (filters.energyFilter !== 'All' && pet.energyLevel !== filters.energyFilter) return false;
+
+    // 5. Breed search
+    if (filters.breedSearch && !pet.breed.toLowerCase().includes(filters.breedSearch.toLowerCase())) return false;
+
+    // 6. Compatibility filters
+    if (filters.goodWithKids !== null && pet.compatibility?.kids !== filters.goodWithKids) return false;
+    if (filters.goodWithDogs !== null && pet.compatibility?.dogs !== filters.goodWithDogs) return false;
+    if (filters.goodWithCats !== null && pet.compatibility?.cats !== filters.goodWithCats) return false;
+
+    // 7. Care filters
+    if (filters.houseTrained !== null && pet.houseTrained !== filters.houseTrained) return false;
 
     return matchesSearch && matchesMode;
   });
@@ -90,6 +278,105 @@ export default function PetExplorer({ initialPets }: { initialPets: Pet[] }) {
   return (
     <div className="max-w-7xl mx-auto px-6 py-12">
       
+      {/* LOCATION BAR */}
+      {locationSearchEnabled && (
+        <div className="mb-6">
+          {userLocation ? (
+            <div className="flex flex-wrap items-center gap-3 p-4 bg-gradient-to-r from-teal-50 to-blue-50 rounded-2xl border border-teal-100">
+              <div className="flex items-center gap-2 text-teal-700">
+                <MapPin size={18} className="text-teal-600" />
+                <span className="font-bold">
+                  {userLocation.city && userLocation.state 
+                    ? `${userLocation.city}, ${userLocation.state}` 
+                    : userLocation.zipCode || 'Your location'}
+                </span>
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <select 
+                  value={distance} 
+                  onChange={(e) => setDistance(parseInt(e.target.value))}
+                  className="px-3 py-1.5 rounded-lg border border-teal-200 text-sm font-medium bg-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+                >
+                  <option value={10}>10 miles</option>
+                  <option value={25}>25 miles</option>
+                  <option value={50}>50 miles</option>
+                  <option value={100}>100 miles</option>
+                </select>
+              </div>
+
+              <button 
+                onClick={clearLocation}
+                className="ml-auto text-sm text-gray-500 hover:text-red-600 font-medium transition"
+              >
+                Clear Location
+              </button>
+
+              {petsLoading && (
+                <Loader2 size={18} className="animate-spin text-teal-600" />
+              )}
+            </div>
+          ) : showLocationPrompt ? (
+            <div className="p-6 bg-white rounded-2xl border border-gray-200 shadow-sm">
+              <h3 className="font-bold text-lg text-slate-900 mb-4 flex items-center gap-2">
+                <MapPin className="text-teal-600" size={20} />
+                Find Pets Near You
+              </h3>
+              
+              <div className="flex flex-col sm:flex-row gap-4">
+                {isGeolocationSupported() && (
+                  <button
+                    onClick={requestLocation}
+                    disabled={locationLoading}
+                    className="flex items-center justify-center gap-2 px-6 py-3 bg-teal-600 text-white font-bold rounded-xl hover:bg-teal-700 transition disabled:opacity-50"
+                  >
+                    {locationLoading ? (
+                      <Loader2 size={18} className="animate-spin" />
+                    ) : (
+                      <Navigation size={18} />
+                    )}
+                    Use My Location
+                  </button>
+                )}
+                
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="Enter ZIP code"
+                    value={zipInput}
+                    onChange={(e) => setZipInput(e.target.value.replace(/\D/g, '').slice(0, 5))}
+                    className="px-4 py-3 rounded-xl border border-gray-300 font-medium focus:outline-none focus:ring-2 focus:ring-teal-500 w-36"
+                    maxLength={5}
+                  />
+                  <button
+                    onClick={setLocationFromZip}
+                    disabled={zipInput.length !== 5}
+                    className="px-4 py-3 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition disabled:opacity-50"
+                  >
+                    Search
+                  </button>
+                </div>
+              </div>
+              
+              <button 
+                onClick={() => setShowLocationPrompt(false)}
+                className="mt-4 text-sm text-gray-500 hover:text-gray-700"
+              >
+                Skip for now
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setShowLocationPrompt(true)}
+              className="flex items-center gap-2 px-4 py-3 bg-gradient-to-r from-teal-50 to-blue-50 text-teal-700 font-bold rounded-xl border border-teal-100 hover:from-teal-100 hover:to-blue-100 transition w-full sm:w-auto"
+            >
+              <MapPin size={18} />
+              Find pets near me
+            </button>
+          )}
+        </div>
+      )}
+
       {/* CONTROLS HEADER */}
       <div className="flex flex-col gap-6 mb-8">
         
@@ -145,7 +432,21 @@ export default function PetExplorer({ initialPets }: { initialPets: Pet[] }) {
                     >
                         <SlidersHorizontal size={20} />
                         Filters
+                        {activeFilterCount > 0 && (
+                          <span className="bg-blue-600 text-white text-xs px-2 py-0.5 rounded-full">{activeFilterCount}</span>
+                        )}
                     </button>
+
+                    {/* Clear Filters */}
+                    {hasActiveFilters && (
+                      <button 
+                        onClick={clearAllFilters}
+                        className="flex items-center gap-1 text-sm font-bold text-red-500 hover:text-red-600 transition"
+                      >
+                        <RotateCcw size={16} />
+                        Clear All
+                      </button>
+                    )}
                 </div>
 
                 {/* Layout Toggle */}
@@ -158,50 +459,241 @@ export default function PetExplorer({ initialPets }: { initialPets: Pet[] }) {
 
             {/* EXPANDABLE FILTERS */}
             {showFilters && (
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-gray-50 p-4 rounded-2xl animate-in fade-in slide-in-from-top-2">
-                    {/* Age Filter */}
-                    <div className="flex flex-col gap-1">
-                        <label className="text-xs font-bold text-gray-500 uppercase">Age</label>
-                        <select 
-                            value={ageFilter} 
-                            onChange={(e) => setAgeFilter(e.target.value as any)}
-                            className="w-full p-2 rounded-lg border border-gray-200 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        >
-                            <option value="All">Any Age</option>
-                            <option value="Baby">Baby (Puppy/Kitten)</option>
-                            <option value="Young">Young</option>
-                            <option value="Adult">Adult</option>
-                            <option value="Senior">Senior</option>
-                        </select>
+                <div className="bg-gray-50 p-6 rounded-2xl animate-in fade-in slide-in-from-top-2 space-y-6">
+                    
+                    {/* ACTIVE FILTER BADGES */}
+                    {hasActiveFilters && (
+                      <div className="flex flex-wrap gap-2 pb-4 border-b border-gray-200">
+                        {filters.ageFilter !== 'All' && (
+                          <span className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">
+                            Age: {filters.ageFilter}
+                            <button onClick={() => updateFilter('ageFilter', 'All')} className="hover:text-blue-900"><X size={14} /></button>
+                          </span>
+                        )}
+                        {filters.sizeFilter !== 'All' && (
+                          <span className="inline-flex items-center gap-1 px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-medium">
+                            Size: {filters.sizeFilter}
+                            <button onClick={() => updateFilter('sizeFilter', 'All')} className="hover:text-purple-900"><X size={14} /></button>
+                          </span>
+                        )}
+                        {filters.genderFilter !== 'All' && (
+                          <span className="inline-flex items-center gap-1 px-3 py-1 bg-pink-100 text-pink-700 rounded-full text-sm font-medium">
+                            {filters.genderFilter}
+                            <button onClick={() => updateFilter('genderFilter', 'All')} className="hover:text-pink-900"><X size={14} /></button>
+                          </span>
+                        )}
+                        {filters.coatFilter !== 'All' && (
+                          <span className="inline-flex items-center gap-1 px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-sm font-medium">
+                            Coat: {filters.coatFilter}
+                            <button onClick={() => updateFilter('coatFilter', 'All')} className="hover:text-amber-900"><X size={14} /></button>
+                          </span>
+                        )}
+                        {filters.energyFilter !== 'All' && (
+                          <span className="inline-flex items-center gap-1 px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-sm font-medium">
+                            Energy: {filters.energyFilter}
+                            <button onClick={() => updateFilter('energyFilter', 'All')} className="hover:text-orange-900"><X size={14} /></button>
+                          </span>
+                        )}
+                        {filters.breedSearch && (
+                          <span className="inline-flex items-center gap-1 px-3 py-1 bg-teal-100 text-teal-700 rounded-full text-sm font-medium">
+                            Breed: {filters.breedSearch}
+                            <button onClick={() => updateFilter('breedSearch', '')} className="hover:text-teal-900"><X size={14} /></button>
+                          </span>
+                        )}
+                        {filters.goodWithKids !== null && (
+                          <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">
+                            {filters.goodWithKids ? 'Good with Kids' : 'Not with Kids'}
+                            <button onClick={() => updateFilter('goodWithKids', null)} className="hover:text-green-900"><X size={14} /></button>
+                          </span>
+                        )}
+                        {filters.goodWithDogs !== null && (
+                          <span className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">
+                            {filters.goodWithDogs ? 'Good with Dogs' : 'Not with Dogs'}
+                            <button onClick={() => updateFilter('goodWithDogs', null)} className="hover:text-blue-900"><X size={14} /></button>
+                          </span>
+                        )}
+                        {filters.goodWithCats !== null && (
+                          <span className="inline-flex items-center gap-1 px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-sm font-medium">
+                            {filters.goodWithCats ? 'Good with Cats' : 'Not with Cats'}
+                            <button onClick={() => updateFilter('goodWithCats', null)} className="hover:text-amber-900"><X size={14} /></button>
+                          </span>
+                        )}
+                        {filters.houseTrained !== null && (
+                          <span className="inline-flex items-center gap-1 px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-sm font-medium">
+                            {filters.houseTrained ? 'House Trained' : 'Not House Trained'}
+                            <button onClick={() => updateFilter('houseTrained', null)} className="hover:text-indigo-900"><X size={14} /></button>
+                          </span>
+                        )}
+                      </div>
+                    )}
+
+                    {/* ROW 1: Basic Filters */}
+                    <div>
+                      <h4 className="text-sm font-bold text-gray-700 mb-3">Basic Filters</h4>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                        {/* Age Filter */}
+                        <div className="flex flex-col gap-1">
+                            <label className="text-xs font-bold text-gray-500 uppercase">Age</label>
+                            <select 
+                                value={filters.ageFilter} 
+                                onChange={(e) => updateFilter('ageFilter', e.target.value)}
+                                className="w-full p-2 rounded-lg border border-gray-200 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                            >
+                                <option value="All">Any Age</option>
+                                <option value="Baby">Baby (Puppy/Kitten)</option>
+                                <option value="Young">Young</option>
+                                <option value="Adult">Adult</option>
+                                <option value="Senior">Senior</option>
+                            </select>
+                        </div>
+
+                        {/* Size Filter */}
+                        <div className="flex flex-col gap-1">
+                            <label className="text-xs font-bold text-gray-500 uppercase">Size</label>
+                            <select 
+                                value={filters.sizeFilter} 
+                                onChange={(e) => updateFilter('sizeFilter', e.target.value)}
+                                className="w-full p-2 rounded-lg border border-gray-200 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                            >
+                                <option value="All">Any Size</option>
+                                <option value="Small">Small</option>
+                                <option value="Medium">Medium</option>
+                                <option value="Large">Large</option>
+                                <option value="Extra Large">Extra Large</option>
+                            </select>
+                        </div>
+
+                        {/* Gender Filter */}
+                        <div className="flex flex-col gap-1">
+                            <label className="text-xs font-bold text-gray-500 uppercase">Gender</label>
+                            <select 
+                                value={filters.genderFilter} 
+                                onChange={(e) => updateFilter('genderFilter', e.target.value)}
+                                className="w-full p-2 rounded-lg border border-gray-200 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                            >
+                                <option value="All">Any Gender</option>
+                                <option value="Male">Male</option>
+                                <option value="Female">Female</option>
+                            </select>
+                        </div>
+
+                        {/* Breed Search */}
+                        <div className="flex flex-col gap-1">
+                            <label className="text-xs font-bold text-gray-500 uppercase">Breed</label>
+                            <input 
+                                type="text"
+                                placeholder="Search breed..."
+                                value={filters.breedSearch}
+                                onChange={(e) => updateFilter('breedSearch', e.target.value)}
+                                list="breed-options"
+                                className="w-full p-2 rounded-lg border border-gray-200 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                            />
+                            <datalist id="breed-options">
+                              {uniqueBreeds.map(breed => (
+                                <option key={breed} value={breed} />
+                              ))}
+                            </datalist>
+                        </div>
+                      </div>
                     </div>
 
-                    {/* Size Filter */}
-                    <div className="flex flex-col gap-1">
-                        <label className="text-xs font-bold text-gray-500 uppercase">Size</label>
-                        <select 
-                            value={sizeFilter} 
-                            onChange={(e) => setSizeFilter(e.target.value as any)}
-                            className="w-full p-2 rounded-lg border border-gray-200 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        >
-                            <option value="All">Any Size</option>
-                            <option value="Small">Small</option>
-                            <option value="Medium">Medium</option>
-                            <option value="Large">Large</option>
-                        </select>
+                    {/* ROW 2: Physical Traits */}
+                    <div>
+                      <h4 className="text-sm font-bold text-gray-700 mb-3">Physical Traits</h4>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                        {/* Coat Length */}
+                        <div className="flex flex-col gap-1">
+                            <label className="text-xs font-bold text-gray-500 uppercase">Coat Length</label>
+                            <select 
+                                value={filters.coatFilter} 
+                                onChange={(e) => updateFilter('coatFilter', e.target.value)}
+                                className="w-full p-2 rounded-lg border border-gray-200 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                            >
+                                <option value="All">Any Coat</option>
+                                <option value="Hairless">Hairless</option>
+                                <option value="Short">Short</option>
+                                <option value="Medium">Medium</option>
+                                <option value="Long">Long</option>
+                            </select>
+                        </div>
+
+                        {/* Energy Level */}
+                        <div className="flex flex-col gap-1">
+                            <label className="text-xs font-bold text-gray-500 uppercase">Energy Level</label>
+                            <select 
+                                value={filters.energyFilter} 
+                                onChange={(e) => updateFilter('energyFilter', e.target.value)}
+                                className="w-full p-2 rounded-lg border border-gray-200 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                            >
+                                <option value="All">Any Energy</option>
+                                <option value="Low">Low (Couch Potato)</option>
+                                <option value="Moderate">Moderate</option>
+                                <option value="High">High (Active)</option>
+                            </select>
+                        </div>
+                      </div>
                     </div>
 
-                    {/* Gender Filter */}
-                    <div className="flex flex-col gap-1">
-                        <label className="text-xs font-bold text-gray-500 uppercase">Gender</label>
-                        <select 
-                            value={genderFilter} 
-                            onChange={(e) => setGenderFilter(e.target.value as any)}
-                            className="w-full p-2 rounded-lg border border-gray-200 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    {/* ROW 3: Compatibility & Care */}
+                    <div>
+                      <h4 className="text-sm font-bold text-gray-700 mb-3">Compatibility & Care</h4>
+                      <div className="flex flex-wrap gap-3">
+                        {/* Good With Kids */}
+                        <button
+                          onClick={() => updateFilter('goodWithKids', filters.goodWithKids === true ? null : true)}
+                          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold border transition ${
+                            filters.goodWithKids === true 
+                              ? 'bg-green-100 border-green-300 text-green-700' 
+                              : 'bg-white border-gray-200 text-gray-600 hover:border-gray-400'
+                          }`}
                         >
-                            <option value="All">Any Gender</option>
-                            <option value="Male">Male</option>
-                            <option value="Female">Female</option>
-                        </select>
+                          <Baby size={16} />
+                          Good with Kids
+                          {filters.goodWithKids === true && <Check size={16} />}
+                        </button>
+
+                        {/* Good With Dogs */}
+                        <button
+                          onClick={() => updateFilter('goodWithDogs', filters.goodWithDogs === true ? null : true)}
+                          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold border transition ${
+                            filters.goodWithDogs === true 
+                              ? 'bg-blue-100 border-blue-300 text-blue-700' 
+                              : 'bg-white border-gray-200 text-gray-600 hover:border-gray-400'
+                          }`}
+                        >
+                          <Dog size={16} />
+                          Good with Dogs
+                          {filters.goodWithDogs === true && <Check size={16} />}
+                        </button>
+
+                        {/* Good With Cats */}
+                        <button
+                          onClick={() => updateFilter('goodWithCats', filters.goodWithCats === true ? null : true)}
+                          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold border transition ${
+                            filters.goodWithCats === true 
+                              ? 'bg-amber-100 border-amber-300 text-amber-700' 
+                              : 'bg-white border-gray-200 text-gray-600 hover:border-gray-400'
+                          }`}
+                        >
+                          <Cat size={16} />
+                          Good with Cats
+                          {filters.goodWithCats === true && <Check size={16} />}
+                        </button>
+
+                        {/* House Trained */}
+                        <button
+                          onClick={() => updateFilter('houseTrained', filters.houseTrained === true ? null : true)}
+                          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold border transition ${
+                            filters.houseTrained === true 
+                              ? 'bg-indigo-100 border-indigo-300 text-indigo-700' 
+                              : 'bg-white border-gray-200 text-gray-600 hover:border-gray-400'
+                          }`}
+                        >
+                          <Users size={16} />
+                          House Trained
+                          {filters.houseTrained === true && <Check size={16} />}
+                        </button>
+                      </div>
                     </div>
                 </div>
             )}
