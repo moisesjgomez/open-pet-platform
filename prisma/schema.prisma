@@ -1,0 +1,137 @@
+// Prisma Schema for Open Pet Platform
+// Azure PostgreSQL Flexible Server
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==========================================
+// USER & PREFERENCES
+// ==========================================
+
+model User {
+  id            String   @id @default(cuid())
+  sessionId     String   @unique // Anonymous session tracking
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  preferences   UserPreference?
+  swipeHistory  SwipeHistory[]
+
+  @@index([sessionId])
+}
+
+model UserPreference {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Preference weights (JSON for flexibility)
+  tagWeights    Json     @default("{}")  // e.g., {"High Energy": 5, "Cat": -2}
+  breedWeights  Json     @default("{}")  // e.g., {"Labrador": 3}
+  sizeWeights   Json     @default("{}")  // e.g., {"Small": 2}
+  energyWeights Json     @default("{}")  // e.g., {"High": 3}
+
+  // Explicit preferences from wizard
+  preferredSpecies   String?  // "Dog", "Cat", or null for both
+  preferredSize      String?  // "Small", "Medium", "Large"
+  preferredEnergy    String?  // "Low", "Moderate", "High"
+  goodWithKids       Boolean?
+  goodWithDogs       Boolean?
+  goodWithCats       Boolean?
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model SwipeHistory {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  petId     String   // External pet ID from adapter
+  action    String   // "like", "nope", "superlike"
+  
+  createdAt DateTime @default(now())
+
+  @@unique([userId, petId])
+  @@index([userId])
+  @@index([petId])
+}
+
+// ==========================================
+// AI CACHING (Cost Optimization)
+// ==========================================
+
+model AICache {
+  id        String   @id @default(cuid())
+  
+  // Cache key = hash of input parameters
+  cacheKey  String   @unique
+  cacheType String   // "bio", "embedding", "recommendation", "chat"
+  
+  // Cached response (JSON for flexibility)
+  response  Json
+  
+  // Token usage tracking for cost monitoring
+  tokensUsed Int     @default(0)
+  model      String? // "gpt-3.5-turbo", "gpt-4", "text-embedding-3-small"
+  
+  // TTL management
+  createdAt DateTime @default(now())
+  expiresAt DateTime?
+
+  @@index([cacheKey])
+  @@index([cacheType])
+  @@index([expiresAt])
+}
+
+// ==========================================
+// PET EMBEDDINGS (Semantic Search)
+// ==========================================
+
+model PetEmbedding {
+  id        String   @id @default(cuid())
+  
+  petId     String   @unique // External pet ID from adapter
+  source    String   // "petfinder", "shelterluv", "mock"
+  
+  // The embedding vector (stored as JSON array of floats)
+  // text-embedding-3-small produces 1536 dimensions
+  embedding Json
+  
+  // Hash of pet data used to generate embedding
+  // If pet data changes, we regenerate
+  contentHash String
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([petId])
+  @@index([source])
+}
+
+// ==========================================
+// USAGE TRACKING (Budget Control)
+// ==========================================
+
+model AIUsage {
+  id        String   @id @default(cuid())
+  
+  date      DateTime @db.Date @default(now())
+  model     String   // "gpt-3.5-turbo", "gpt-4", "text-embedding-3-small"
+  
+  // Daily totals
+  requestCount Int   @default(0)
+  tokensUsed   Int   @default(0)
+  estimatedCost Float @default(0)
+
+  @@unique([date, model])
+  @@index([date])
+}

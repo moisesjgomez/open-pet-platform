@@ -19,6 +19,23 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma Client
+        run: npx prisma generate
+
+      - name: Run Prisma Migrations
+        run: npx prisma migrate deploy
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
       - name: Login to Azure
         uses: azure/login@v2
         with:
@@ -40,4 +57,9 @@ jobs:
           az containerapp update \
             --name ${{ env.CONTAINER_APP_NAME }} \
             --resource-group ${{ env.RESOURCE_GROUP }} \
-            --image ${{ env.AZURE_CONTAINER_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+            --image ${{ env.AZURE_CONTAINER_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
+            --set-env-vars \
+              "DATABASE_URL=${{ secrets.DATABASE_URL }}" \
+              "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" \
+              "PETFINDER_API_KEY=${{ secrets.PETFINDER_API_KEY }}" \
+              "PETFINDER_SECRET=${{ secrets.PETFINDER_SECRET }}"
