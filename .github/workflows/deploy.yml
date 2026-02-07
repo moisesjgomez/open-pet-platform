@@ -2,8 +2,8 @@ name: Deploy to Azure Container Apps
 
 on:
   push:
-    branches: [main]
-  workflow_dispatch: # Allow manual trigger
+    branches: [main]  # Only deploy when merging to main
+  workflow_dispatch:  # Allow manual trigger
 
 env:
   AZURE_CONTAINER_REGISTRY: openpetregistry.azurecr.io
