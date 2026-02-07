@@ -74,15 +74,22 @@ export default function UrgentBanner({ pets }: { pets: Pet[] }) {
       <div className="bg-white rounded-3xl shadow-xl overflow-hidden border border-rose-100 flex flex-col md:flex-row h-auto md:h-[500px]">
         
         {/* LEFT: Image Area */}
-        <div className="relative h-72 md:h-full md:w-1/2 group">
-          <div key={pet.id} className="relative w-full h-full animate-in fade-in duration-700">
+        <div className="relative h-72 md:h-full md:w-1/2 group overflow-hidden bg-gray-200">
+          {/* Blurred background */}
+          <Image 
+            src={pet.imageUrl} 
+            alt="" 
+            fill 
+            className="object-cover blur-xl scale-110 opacity-50"
+          />
+          <Link href={`/pet/${pet.id}`} key={pet.id} className="relative w-full h-full block animate-in fade-in duration-700 cursor-pointer z-10">
              <Image 
                 src={pet.imageUrl} 
                 alt={pet.name} 
                 fill 
-                className="object-cover"
+                className="object-contain hover:scale-105 transition duration-500"
              />
-          </div>
+          </Link>
 
           <div className="absolute top-4 left-4 bg-rose-500 text-white px-4 py-2 rounded-full text-sm font-bold shadow-lg flex items-center gap-2 animate-pulse">
             <Heart size={16} fill="currentColor" />

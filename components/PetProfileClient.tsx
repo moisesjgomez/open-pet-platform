@@ -4,28 +4,89 @@ import { useState } from 'react';
 import { Pet } from '@/lib/adapters/base';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ArrowLeft, MapPin, Share2, Heart, ShieldCheck, Sparkles } from 'lucide-react';
+import { ArrowLeft, MapPin, Share2, Heart, ShieldCheck, Sparkles, ChevronLeft, ChevronRight, Copy, Check, X } from 'lucide-react';
 import AdoptionFormModal from '@/components/AdoptionFormModal';
 
 export default function PetProfileClient({ pet }: { pet: Pet }) {
   const [showForm, setShowForm] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   // AI MATCH SCORE LOGIC
   const matchScore = pet.tags.includes('Chill') ? 94 : pet.tags.includes('High Energy') ? 88 : 91;
   
-  // Gallery State
-  const [activeImage, setActiveImage] = useState(pet.imageUrl);
+  // Gallery - use images array if available, otherwise fall back to single imageUrl
+  const allImages = pet.images && pet.images.length > 0 ? pet.images : [pet.imageUrl];
+  const [activeImage, setActiveImage] = useState(allImages[0]);
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  const goToImage = (index: number) => {
+    setActiveIndex(index);
+    setActiveImage(allImages[index]);
+  };
+
+  const handleShare = async () => {
+    const shareUrl = typeof window !== 'undefined' ? window.location.href : '';
+    const shareText = `Meet ${pet.name}, a ${pet.breed} looking for a forever home! 🐾`;
+    
+    // Try native Web Share API first (works great on mobile)
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: `Adopt ${pet.name}`,
+          text: shareText,
+          url: shareUrl,
+        });
+        return;
+      } catch (err) {
+        // User cancelled or error - fall through to modal
+      }
+    }
+    
+    // Fallback to modal on desktop
+    setShowShareModal(true);
+  };
+
+  const copyToClipboard = () => {
+    const shareUrl = typeof window !== 'undefined' ? window.location.href : '';
+    navigator.clipboard.writeText(shareUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const shareToSocial = (platform: string) => {
+    const shareUrl = encodeURIComponent(typeof window !== 'undefined' ? window.location.href : '');
+    const shareText = encodeURIComponent(`Meet ${pet.name}, a ${pet.breed} looking for a forever home! 🐾`);
+    
+    const urls: Record<string, string> = {
+      twitter: `https://twitter.com/intent/tweet?text=${shareText}&url=${shareUrl}`,
+      facebook: `https://www.facebook.com/sharer/sharer.php?u=${shareUrl}`,
+      email: `mailto:?subject=Meet ${pet.name}!&body=${shareText}%0A%0A${shareUrl}`,
+    };
+    
+    window.open(urls[platform], '_blank', 'width=600,height=400');
+    setShowShareModal(false);
+  };
 
   return (
     <div className="min-h-screen bg-white">
       
       {/* HERO IMAGE & GALLERY */}
-      <div className="relative h-[50vh] md:h-[65vh] w-full bg-gray-900 group">
+      <div className="relative h-[50vh] md:h-[65vh] w-full bg-gray-900 group overflow-hidden">
+        {/* Blurred background image */}
+        <Image 
+            src={activeImage} 
+            alt="" 
+            fill 
+            className="object-cover blur-2xl scale-110 opacity-60" 
+            priority 
+        />
+        {/* Main sharp image */}
         <Image 
             src={activeImage} 
             alt={pet.name} 
             fill 
-            className="object-contain md:object-cover transition-opacity duration-500" 
+            className="object-contain transition-opacity duration-500 z-10" 
             priority 
         />
         
@@ -35,22 +96,49 @@ export default function PetProfileClient({ pet }: { pet: Pet }) {
                 <ArrowLeft size={24} />
             </Link>
             <div className="flex gap-3">
-                <button className="bg-white/10 backdrop-blur-md text-white p-3 rounded-full hover:bg-white hover:text-slate-900 transition border border-white/20">
+                {/* Image counter */}
+                {allImages.length > 1 && (
+                  <div className="bg-black/50 backdrop-blur-md text-white px-4 py-2 rounded-full text-sm font-bold">
+                    {activeIndex + 1} / {allImages.length}
+                  </div>
+                )}
+                <button 
+                  onClick={handleShare}
+                  className="bg-white/10 backdrop-blur-md text-white p-3 rounded-full hover:bg-white hover:text-slate-900 transition border border-white/20"
+                >
                     <Share2 size={24} />
                 </button>
             </div>
         </div>
 
-        {/* Gallery Strip (Only if multiple images) */}
-        {pet.images && pet.images.length > 1 && (
+        {/* Left/Right Arrow Navigation */}
+        {allImages.length > 1 && (
+          <>
+            <button 
+              onClick={() => goToImage(activeIndex === 0 ? allImages.length - 1 : activeIndex - 1)}
+              className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/40 backdrop-blur-sm text-white p-3 rounded-full hover:bg-black/60 transition z-20 opacity-0 group-hover:opacity-100"
+            >
+              <ChevronLeft size={28} />
+            </button>
+            <button 
+              onClick={() => goToImage(activeIndex === allImages.length - 1 ? 0 : activeIndex + 1)}
+              className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/40 backdrop-blur-sm text-white p-3 rounded-full hover:bg-black/60 transition z-20 opacity-0 group-hover:opacity-100"
+            >
+              <ChevronRight size={28} />
+            </button>
+          </>
+        )}
+
+        {/* Gallery Thumbnails */}
+        {allImages.length > 1 && (
             <div className="absolute bottom-6 left-0 w-full flex justify-center gap-2 px-4 z-20 overflow-x-auto py-2">
-                {pet.images.map((img, idx) => (
+                {allImages.map((img, idx) => (
                     <button 
                         key={idx}
-                        onClick={() => setActiveImage(img)}
-                        className={`relative w-16 h-16 md:w-20 md:h-20 rounded-lg overflow-hidden border-2 transition-all ${activeImage === img ? 'border-white scale-110 shadow-lg' : 'border-white/30 opacity-70 hover:opacity-100'}`}
+                        onClick={() => goToImage(idx)}
+                        className={`relative w-16 h-16 md:w-20 md:h-20 rounded-lg overflow-hidden border-2 transition-all flex-shrink-0 ${activeIndex === idx ? 'border-white scale-110 shadow-lg' : 'border-white/30 opacity-70 hover:opacity-100'}`}
                     >
-                        <Image src={img} alt={`View ${idx}`} fill className="object-cover" />
+                        <Image src={img} alt={`Photo ${idx + 1}`} fill className="object-cover" />
                     </button>
                 ))}
             </div>
@@ -133,8 +221,60 @@ export default function PetProfileClient({ pet }: { pet: Pet }) {
         </div>
       </div>
 
-      {/* RENDER MODAL */}
+      {/* ADOPTION FORM MODAL */}
       {showForm && pet && <AdoptionFormModal pet={pet} onClose={() => setShowForm(false)} />}
+
+      {/* SHARE MODAL */}
+      {showShareModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowShareModal(false)}>
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-bold text-slate-900">Share {pet.name}</h3>
+              <button onClick={() => setShowShareModal(false)} className="p-2 hover:bg-gray-100 rounded-full transition">
+                <X size={20} />
+              </button>
+            </div>
+            
+            {/* Social Buttons */}
+            <div className="flex gap-3 mb-6">
+              <button 
+                onClick={() => shareToSocial('twitter')}
+                className="flex-1 py-3 bg-sky-500 text-white rounded-xl font-bold hover:bg-sky-600 transition"
+              >
+                𝕏 Twitter
+              </button>
+              <button 
+                onClick={() => shareToSocial('facebook')}
+                className="flex-1 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition"
+              >
+                Facebook
+              </button>
+              <button 
+                onClick={() => shareToSocial('email')}
+                className="flex-1 py-3 bg-gray-600 text-white rounded-xl font-bold hover:bg-gray-700 transition"
+              >
+                Email
+              </button>
+            </div>
+            
+            {/* Copy Link */}
+            <div className="flex gap-2">
+              <input 
+                type="text" 
+                readOnly 
+                value={typeof window !== 'undefined' ? window.location.href : ''} 
+                className="flex-1 px-4 py-3 bg-gray-100 rounded-xl text-sm text-gray-600 truncate"
+              />
+              <button 
+                onClick={copyToClipboard}
+                className={`px-4 py-3 rounded-xl font-bold transition flex items-center gap-2 ${copied ? 'bg-green-500 text-white' : 'bg-slate-900 text-white hover:bg-slate-800'}`}
+              >
+                {copied ? <><Check size={18} /> Copied!</> : <><Copy size={18} /> Copy</>}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       
     </div>
   );

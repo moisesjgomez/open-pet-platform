@@ -233,12 +233,15 @@ export default function PetExplorer({ initialPets }: { initialPets: Pet[] }) {
             // GRID CARD
             if (viewMode === 'grid') return (
                 <div key={pet.id} className="group bg-white rounded-3xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-xl transition-all duration-300">
-                    <div className="relative h-72 w-full bg-gray-100">
-                        <Image src={pet.imageUrl} alt={pet.name} fill className="object-cover transition-transform duration-500 group-hover:scale-110" />
-                        <div className="absolute top-4 left-4 flex flex-col gap-2">
+                    <Link href={`/pet/${pet.id}`} className="relative h-72 w-full bg-gray-200 block cursor-pointer overflow-hidden">
+                        {/* Blurred background */}
+                        <Image src={pet.imageUrl} alt="" fill className="object-cover blur-xl scale-110 opacity-50" />
+                        {/* Sharp image */}
+                        <Image src={pet.imageUrl} alt={pet.name} fill className="object-contain transition-transform duration-500 group-hover:scale-105 z-10" />
+                        <div className="absolute top-4 left-4 flex flex-col gap-2 z-20">
                             {pet.daysInShelter > 30 && <span className="bg-purple-600 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg">Long Stay</span>}
                         </div>
-                    </div>
+                    </Link>
                     <div className="p-6">
                         <div className="flex justify-between items-start mb-2">
                             <h3 className="text-2xl font-black text-slate-900">{pet.name}</h3>
@@ -274,9 +277,10 @@ export default function PetExplorer({ initialPets }: { initialPets: Pet[] }) {
             // LIST ROW
             if (viewMode === 'list') return (
                 <div key={pet.id} className="group bg-white rounded-2xl p-4 border border-gray-200 shadow-sm hover:shadow-md transition-all flex gap-6 items-center">
-                    <div className="relative h-24 w-24 flex-shrink-0">
-                        <Image src={pet.imageUrl} alt={pet.name} fill className="object-cover rounded-xl" />
-                    </div>
+                    <Link href={`/pet/${pet.id}`} className="relative h-24 w-24 flex-shrink-0 cursor-pointer bg-gray-200 rounded-xl overflow-hidden">
+                        <Image src={pet.imageUrl} alt="" fill className="object-cover blur-md scale-110 opacity-50" />
+                        <Image src={pet.imageUrl} alt={pet.name} fill className="object-contain hover:scale-105 transition z-10" />
+                    </Link>
                     
                     <div className="flex-1 grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
                         <div>
