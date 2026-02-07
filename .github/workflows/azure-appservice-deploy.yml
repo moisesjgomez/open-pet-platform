@@ -7,8 +7,8 @@ on:
   workflow_dispatch:
 
 env:
-  AZURE_WEBAPP_NAME: open-pet-platform
-  NODE_VERSION: '18.x'
+  AZURE_WEBAPP_NAME: openpet
+  NODE_VERSION: '20.x'
 
 jobs:
   build:
