@@ -260,8 +260,8 @@ export default function SwipePage() {
 
       {/* Desktop Split Layout Container */}
       <div className="h-full w-full flex flex-col md:flex-row">
-        {/* Swipe Card Section - Full on mobile, 45% on desktop */}
-        <div className="relative flex-1 md:flex-none md:w-[45%] h-full">
+        {/* Swipe Card Section - Full on mobile, 50% on desktop */}
+        <div className="relative flex-1 md:flex-none md:w-[50%] lg:w-[55%] h-full">
           <SwipeCard 
              ref={swipeCardRef}
              key={pets[0].id} 
@@ -270,15 +270,20 @@ export default function SwipePage() {
           />
         </div>
 
-        {/* Desktop Detail Panel - Hidden on mobile, 55% on desktop */}
-        <div className="hidden md:flex md:w-[55%] h-full flex-col bg-white border-l border-gray-200 pt-20 overflow-y-auto">
-          {/* Pet Photo */}
-          <div className="w-full h-64 bg-gray-100 overflow-hidden">
+        {/* Desktop Detail Panel - Hidden on mobile, 50% on desktop */}
+        <div className="hidden md:flex md:w-[50%] lg:w-[45%] h-full flex-col bg-white border-l border-gray-200 pt-20 overflow-y-auto">
+          {/* Pet Photo Gallery - show multiple if available */}
+          <div className="w-full h-56 lg:h-72 bg-gray-100 overflow-hidden relative">
             <img 
               src={pets[0].images?.[0] ?? pets[0].imageUrl} 
               alt={pets[0].name}
               className="w-full h-full object-cover"
             />
+            {pets[0].images && pets[0].images.length > 1 && (
+              <div className="absolute bottom-3 right-3 bg-black/60 text-white text-xs px-2 py-1 rounded-full">
+                📷 {pets[0].images.length} photos
+              </div>
+            )}
           </div>
           
           {/* Pet Details */}

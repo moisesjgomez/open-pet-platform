@@ -104,7 +104,7 @@ const SwipeCard = forwardRef<SwipeCardHandle, Props>(({ pet, onSwipe }, ref) => 
   };
 
   return (
-    <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center p-4 pt-16">
+    <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center p-4 pt-16 md:pt-20 md:pb-24">
       <motion.div
         drag="x" // Enable dragging ONLY on X axis
         dragConstraints={{ left: 0, right: 0 }}
@@ -113,7 +113,7 @@ const SwipeCard = forwardRef<SwipeCardHandle, Props>(({ pet, onSwipe }, ref) => 
         onClick={handleCardClick}
         animate={controls}
         style={{ x, rotate }}
-        className="relative w-full max-w-[340px] md:max-w-sm h-[65vh] md:h-[600px] bg-white rounded-3xl shadow-2xl cursor-grab active:cursor-grabbing overflow-hidden border border-gray-200 touch-manipulation"
+        className="relative w-full max-w-[340px] md:max-w-[400px] lg:max-w-[420px] h-[65vh] md:h-[calc(100vh-180px)] max-h-[700px] bg-white rounded-3xl shadow-2xl cursor-grab active:cursor-grabbing overflow-hidden border border-gray-200 touch-manipulation"
       >
         {/* The Pet Photo - use images array if available, fallback to imageUrl */}
         <div className="relative h-3/4 w-full bg-gray-100">
