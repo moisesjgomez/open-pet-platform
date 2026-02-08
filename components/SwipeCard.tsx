@@ -4,7 +4,7 @@ import { motion, useMotionValue, useTransform, useAnimation } from 'framer-motio
 import { useRouter } from 'next/navigation';
 import { Pet } from '@/lib/adapters/base';
 import { X, Heart, Zap, Ruler, Users, PawPrint, Sparkles, Info, Dog, Cat, Baby, Clock } from 'lucide-react';
-import { useRef, forwardRef, useImperativeHandle } from 'react';
+import { useRef, forwardRef, useImperativeHandle, useState } from 'react';
 
 interface Props {
   pet: Pet;
@@ -54,6 +54,7 @@ const SwipeCard = forwardRef<SwipeCardHandle, Props>(({ pet, onSwipe }, ref) => 
   const controls = useAnimation();
   const x = useMotionValue(0); // Tracks how far left/right you dragged
   const dragStartX = useRef(0); // Track where drag started to detect clicks vs drags
+  const [isDragging, setIsDragging] = useState(false);
   
   // PHYSICS:
   // 1. Rotation: As you drag X (left/right), rotate the card slightly (-25deg to 25deg)
@@ -77,6 +78,7 @@ const SwipeCard = forwardRef<SwipeCardHandle, Props>(({ pet, onSwipe }, ref) => 
 
   const handleDragStart = () => {
     dragStartX.current = x.get();
+    setIsDragging(true);
   };
 
   const handleCardClick = () => {
@@ -88,6 +90,7 @@ const SwipeCard = forwardRef<SwipeCardHandle, Props>(({ pet, onSwipe }, ref) => 
   };
 
   const handleDragEnd = async (event: any, info: any) => {
+    setIsDragging(false);
     const offset = info.offset.x;
     const velocity = info.velocity.x;
 
@@ -113,7 +116,7 @@ const SwipeCard = forwardRef<SwipeCardHandle, Props>(({ pet, onSwipe }, ref) => 
         onClick={handleCardClick}
         animate={controls}
         style={{ x, rotate }}
-        className="relative w-full max-w-[380px] md:max-w-[420px] lg:max-w-[440px] flex-1 max-h-[75vh] md:max-h-[70vh] bg-white rounded-3xl shadow-2xl cursor-grab active:cursor-grabbing overflow-hidden border border-gray-200 touch-manipulation flex flex-col"
+        className="relative w-full max-w-[380px] md:max-w-[420px] lg:max-w-[440px] flex-1 max-h-[75vh] md:max-h-[70vh] bg-white rounded-3xl shadow-2xl cursor-grab active:cursor-grabbing overflow-hidden border border-gray-200 touch-none select-none flex flex-col"
       >
         {/* The Pet Photo - use images array if available, fallback to imageUrl */}
         <div className="relative flex-1 min-h-0 w-full bg-gray-100">
