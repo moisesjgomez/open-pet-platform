@@ -2,19 +2,31 @@ name: Deploy to Azure Container Apps
 
 on:
   push:
-    branches: [main]  # Only deploy when merging to main
-  workflow_dispatch:  # Allow manual trigger
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false  # Don't cancel in-progress deploys
 
 env:
   AZURE_CONTAINER_REGISTRY: openpetregistry.azurecr.io
   CONTAINER_APP_NAME: openpet
   RESOURCE_GROUP: rg-open-pet-platform
   IMAGE_NAME: openpet
+  CONTAINER_APP_URL: https://openpet.whitesand-a94250e7.canadacentral.azurecontainerapps.io
+
+permissions:
+  id-token: write   # Required for OIDC
+  contents: read    # Required for checkout
 
 jobs:
-  build-and-deploy:
+  # Job 1: Run database migrations
+  migrate:
+    name: Database Migrations
     runs-on: ubuntu-latest
-    
+    timeout-minutes: 10
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -36,10 +48,30 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
-      - name: Login to Azure
+  # Job 2: Build and push container image
+  build:
+    name: Build & Push Image
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: migrate  # Only build if migrations succeed
+
+    permissions:
+      id-token: write
+      contents: read
+
+    outputs:
+      image-tag: ${{ github.sha }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Login to Azure with OIDC
         uses: azure/login@v2
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Login to Azure Container Registry
         run: az acr login --name openpetregistry
@@ -52,14 +84,66 @@ jobs:
             --image ${{ env.IMAGE_NAME }}:latest \
             .
 
+  # Job 3: Deploy to Container Apps
+  deploy:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: build
+    environment: production  # Optional: Add environment protection rules in GitHub
+
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Login to Azure with OIDC
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
       - name: Deploy to Container Apps
         run: |
           az containerapp update \
             --name ${{ env.CONTAINER_APP_NAME }} \
             --resource-group ${{ env.RESOURCE_GROUP }} \
-            --image ${{ env.AZURE_CONTAINER_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
+            --image ${{ env.AZURE_CONTAINER_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+
+      - name: Update Container App Secrets
+        run: |
+          az containerapp secret set \
+            --name ${{ env.CONTAINER_APP_NAME }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --secrets \
+              database-url="${{ secrets.DATABASE_URL }}" \
+              gemini-api-key="${{ secrets.GEMINI_API_KEY }}" \
+              petfinder-api-key="${{ secrets.PETFINDER_API_KEY }}" \
+              petfinder-secret="${{ secrets.PETFINDER_SECRET }}" \
+              auth-secret="${{ secrets.AUTH_SECRET }}"
+
+          az containerapp update \
+            --name ${{ env.CONTAINER_APP_NAME }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
             --set-env-vars \
-              "DATABASE_URL=${{ secrets.DATABASE_URL }}" \
-              "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" \
-              "PETFINDER_API_KEY=${{ secrets.PETFINDER_API_KEY }}" \
-              "PETFINDER_SECRET=${{ secrets.PETFINDER_SECRET }}"
+              "DATABASE_URL=secretref:database-url" \
+              "GEMINI_API_KEY=secretref:gemini-api-key" \
+              "PETFINDER_API_KEY=secretref:petfinder-api-key" \
+              "PETFINDER_SECRET=secretref:petfinder-secret" \
+              "AUTH_SECRET=secretref:auth-secret"
+
+      - name: Health Check
+        run: |
+          echo "Waiting for deployment to stabilize..."
+          sleep 30
+          
+          echo "Checking health endpoint..."
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${{ env.CONTAINER_APP_URL }}")
+          
+          if [ "$HTTP_STATUS" -eq 200 ]; then
+            echo "✅ Health check passed! Status: $HTTP_STATUS"
+          else
+            echo "❌ Health check failed! Status: $HTTP_STATUS"
+            exit 1
+          fi
