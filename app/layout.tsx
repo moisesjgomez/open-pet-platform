@@ -13,6 +13,12 @@ const nunito = Nunito({
 export const metadata: Metadata = {
   title: "OpenRescue Platform",
   description: "Find your new best friend.",
+  icons: {
+    icon: [
+      { url: '/favicon.ico', sizes: '32x32', type: 'image/x-icon' },
+    ],
+    apple: '/apple-icon.svg',
+  },
 };
 
 export default function RootLayout({
