@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="180" height="180" viewBox="0 0 180 180">
+  <!-- Background -->
+  <rect width="180" height="180" rx="40" fill="#FED7AA"/>
+  
+  <!-- Paw pad (main) -->
+  <ellipse cx="90" cy="105" rx="35" ry="30" fill="#EA580C"/>
+  
+  <!-- Toe pads -->
+  <circle cx="55" cy="65" r="18" fill="#EA580C"/>
+  <circle cx="125" cy="65" r="18" fill="#EA580C"/>
+  <circle cx="40" cy="100" r="15" fill="#EA580C"/>
+  <circle cx="140" cy="100" r="15" fill="#EA580C"/>
+</svg>
