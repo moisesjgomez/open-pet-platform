@@ -26,12 +26,26 @@ export interface HealthInfo {
 // AI Enrichment Level
 export type EnrichmentLevel = 'heuristic' | 'basic' | 'full';
 
+// Species Types (matching Petfinder categories)
+export type PetSpecies = 
+  | 'Dog' 
+  | 'Cat' 
+  | 'Bird' 
+  | 'Rabbit' 
+  | 'Small & Furry'  // Guinea pigs, hamsters, gerbils, etc.
+  | 'Reptile'        // Lizards, snakes, turtles
+  | 'Horse' 
+  | 'Fish' 
+  | 'Barnyard'       // Farm animals
+  | 'Other';
+
 // 1. The "Interface" (The Shape of the Data)
 // We are saying: "Every single pet MUST have these fields."
 export interface Pet {
   id: string;
   name: string;
   breed: string;
+  species: PetSpecies;  // Explicit species - Dog, Cat, Bird, Rabbit, Reptile, etc.
   status: 'Available' | 'Pending' | 'Adopted'; // It can ONLY be one of these 3 words
   sex: 'Male' | 'Female';
   age: string;

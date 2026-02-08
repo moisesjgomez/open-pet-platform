@@ -1,4 +1,64 @@
-import { Pet, PetDataSource } from './base';
+import { Pet, PetDataSource, PetSpecies } from './base';
+
+// Species detection from animal type and breed
+const SPECIES_MAP: Record<string, PetSpecies> = {
+  'DOG': 'Dog',
+  'CAT': 'Cat',
+  'BIRD': 'Bird',
+  'RABBIT': 'Rabbit',
+  'GUINEA PIG': 'Small & Furry',
+  'HAMSTER': 'Small & Furry',
+  'GERBIL': 'Small & Furry',
+  'FERRET': 'Small & Furry',
+  'RAT': 'Small & Furry',
+  'MOUSE': 'Small & Furry',
+  'CHINCHILLA': 'Small & Furry',
+  'LIZARD': 'Reptile',
+  'GECKO': 'Reptile',
+  'SNAKE': 'Reptile',
+  'TURTLE': 'Reptile',
+  'TORTOISE': 'Reptile',
+  'IGUANA': 'Reptile',
+  'FISH': 'Fish',
+  'HORSE': 'Horse',
+  'PIG': 'Barnyard',
+  'GOAT': 'Barnyard',
+  'CHICKEN': 'Barnyard',
+};
+
+function detectSpecies(animalType: string, breed: string): PetSpecies {
+  const upperType = animalType.toUpperCase();
+  const upperBreed = breed.toUpperCase();
+  
+  // Direct match on animal type
+  if (SPECIES_MAP[upperType]) {
+    return SPECIES_MAP[upperType];
+  }
+  
+  // Check breed field for species indicators
+  for (const [keyword, species] of Object.entries(SPECIES_MAP)) {
+    if (upperBreed.includes(keyword)) {
+      return species;
+    }
+  }
+  
+  // Additional breed-based detection
+  if (upperBreed.includes('DOMESTIC') || upperBreed.includes('SHORTHAIR') || 
+      upperBreed.includes('LONGHAIR') || upperBreed.includes('SIAMESE') || 
+      upperBreed.includes('PERSIAN') || upperBreed.includes('TABBY')) {
+    return 'Cat';
+  }
+  
+  if (upperBreed.includes('TERRIER') || upperBreed.includes('RETRIEVER') || 
+      upperBreed.includes('SHEPHERD') || upperBreed.includes('BULLDOG') ||
+      upperBreed.includes('POODLE') || upperBreed.includes('HUSKY') ||
+      upperBreed.includes('PIT BULL') || upperBreed.includes('BEAGLE')) {
+    return 'Dog';
+  }
+  
+  // Default to Other for unknown species
+  return 'Other';
+}
 
 // 1. THE RAW DATA (Montgomery County Open Data Structure)
 // Endpoint: https://data.montgomerycountymd.gov/resource/e54u-qx42.json
@@ -38,12 +98,14 @@ export class BuffaloAdapter implements PetDataSource {
     syntheticDesc += `This ${animal.petsize.toLowerCase()} ${animal.animaltype.toLowerCase()} has a beautiful ${animal.color.toLowerCase()} coat. `;
     syntheticDesc += `Currently waiting for a forever home at the adoption center.`;
 
-    // 3. Basic Tags ONLY - no fake personality traits from breed stereotypes
+    // 3. Detect species using the helper function
+    const species = detectSpecies(animal.animaltype, animal.breed);
+
+    // 4. Basic Tags ONLY - no fake personality traits from breed stereotypes
     let tags: string[] = [];
 
-    // Basic Type Tags
-    if (animal.animaltype === 'DOG') tags.push('Dog');
-    if (animal.animaltype === 'CAT') tags.push('Cat');
+    // Species tag (use detected species, not just Dog/Cat)
+    tags.push(species);
 
     // Size tag
     if (animal.petsize === 'SMALL') tags.push('Small');
@@ -106,6 +168,7 @@ export class BuffaloAdapter implements PetDataSource {
       id: animal.animalid,
       name: name,
       breed: animal.breed,
+      species: species,  // Properly detected species
       sex: animal.sex === 'F' ? 'Female' : 'Male',
       age: animal.petage,
       status: 'Available',

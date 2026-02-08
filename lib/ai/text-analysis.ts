@@ -354,9 +354,26 @@ export function generateSmartTags(params: {
 } {
   let tags: string[] = [];
   
-  // 1. Animal Type (factual)
-  if (params.animalType === 'DOG') tags.push('Dog');
-  if (params.animalType === 'CAT') tags.push('Cat');
+  // 1. Animal Type / Species (factual)
+  const speciesMap: Record<string, string> = {
+    'DOG': 'Dog',
+    'CAT': 'Cat',
+    'BIRD': 'Bird',
+    'RABBIT': 'Rabbit',
+    'SMALL_FURRY': 'Small & Furry',
+    'REPTILE': 'Reptile',
+    'HORSE': 'Horse',
+    'FISH': 'Fish',
+    'BARNYARD': 'Barnyard',
+  };
+  
+  const upperType = params.animalType.toUpperCase();
+  if (speciesMap[upperType]) {
+    tags.push(speciesMap[upperType]);
+  } else if (upperType !== 'OTHER' && upperType !== '') {
+    // Unknown species - add as-is with proper capitalization
+    tags.push(params.animalType.charAt(0).toUpperCase() + params.animalType.slice(1).toLowerCase());
+  }
   
   // 2. Breed Analysis - DISABLED (returns empty, no stereotypes)
   // tags.push(...analyzeBreed(params.breed));

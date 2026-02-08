@@ -1,4 +1,4 @@
-import { Pet, PetDataSource } from './base';
+import { Pet, PetDataSource, PetSpecies } from './base';
 
 // 1. THE MESSY SHELTERLUV DATA (What their API actually looks like)
 interface ShelterluvResponse {
@@ -82,9 +82,41 @@ export class ShelterluvAdapter implements PetDataSource {
     const dogs = attrNames.some((a: string) => a.includes('dog')) || desc.includes('dog') || desc.includes('playgroup');
     const cats = attrNames.some((a: string) => a.includes('cat')) || desc.includes('cat') || desc.includes('kitten');
 
+    // Species detection based on breed and description
+    const detectSpecies = (): PetSpecies => {
+      const breedLower = (slAnimal.Breed || '').toLowerCase();
+      const descLower = desc.toLowerCase();
+      
+      // Check for specific species keywords
+      if (breedLower.includes('cat') || breedLower.includes('kitten') || breedLower.includes('tabby') || breedLower.includes('siamese') || breedLower.includes('persian')) return 'Cat';
+      if (breedLower.includes('rabbit') || breedLower.includes('bunny')) return 'Rabbit';
+      if (breedLower.includes('bird') || breedLower.includes('parrot') || breedLower.includes('parakeet')) return 'Bird';
+      if (breedLower.includes('guinea pig') || breedLower.includes('hamster') || breedLower.includes('ferret') || breedLower.includes('chinchilla') || breedLower.includes('gerbil')) return 'Small & Furry';
+      if (breedLower.includes('lizard') || breedLower.includes('gecko') || breedLower.includes('snake') || breedLower.includes('turtle') || breedLower.includes('tortoise')) return 'Reptile';
+      if (breedLower.includes('horse') || breedLower.includes('pony')) return 'Horse';
+      if (breedLower.includes('fish') || breedLower.includes('goldfish')) return 'Fish';
+      if (breedLower.includes('pig') || breedLower.includes('goat') || breedLower.includes('chicken') || breedLower.includes('duck')) return 'Barnyard';
+      
+      // Default to Dog for common dog breeds
+      if (breedLower.includes('dog') || breedLower.includes('terrier') || breedLower.includes('retriever') || breedLower.includes('shepherd') || breedLower.includes('bulldog') || breedLower.includes('poodle') || breedLower.includes('beagle')) return 'Dog';
+      
+      // If still unknown, check description for cat/dog mentions
+      if (descLower.includes('meow') || descLower.includes('purr') || descLower.includes('litter box')) return 'Cat';
+      
+      return 'Dog'; // Default to Dog as most shelters primarily have dogs
+    };
+
+    const species = detectSpecies();
+
+    // Add species tag if not already present
+    if (!tags.includes(species)) {
+      tags.push(species);
+    }
+
     return {
       id: slAnimal.ID,
       name: fixedName,
+      species: species,
       breed: slAnimal.Breed,
       sex: slAnimal.Sex === 'Male' ? 'Male' : 'Female',
       age: ageString,

@@ -74,14 +74,42 @@ export function runHeuristicAnalysis(pet: Pet): {
   size: 'Small' | 'Medium' | 'Large' | 'Extra Large';
   ageCategory: 'Baby' | 'Young' | 'Adult' | 'Senior';
 } {
-  // Determine animal type from tags or breed
-  let animalType = 'DOG';
-  if (pet.tags?.some(t => t.toLowerCase() === 'cat') || 
-      pet.breed?.toLowerCase().includes('cat') ||
-      pet.breed?.toLowerCase().includes('domestic') ||
-      pet.breed?.toLowerCase().includes('siamese') ||
-      pet.breed?.toLowerCase().includes('persian')) {
-    animalType = 'CAT';
+  // Use the pet's species field if available, otherwise detect from tags/breed
+  let animalType = 'OTHER';
+  
+  if (pet.species) {
+    // Map species to animalType for generateSmartTags
+    if (pet.species === 'Dog') animalType = 'DOG';
+    else if (pet.species === 'Cat') animalType = 'CAT';
+    else if (pet.species === 'Bird') animalType = 'BIRD';
+    else if (pet.species === 'Rabbit') animalType = 'RABBIT';
+    else if (pet.species === 'Small & Furry') animalType = 'SMALL_FURRY';
+    else if (pet.species === 'Reptile') animalType = 'REPTILE';
+    else animalType = pet.species.toUpperCase();
+  } else {
+    // Fallback: detect from tags or breed
+    if (pet.tags?.some(t => t.toLowerCase() === 'dog')) {
+      animalType = 'DOG';
+    } else if (pet.tags?.some(t => t.toLowerCase() === 'cat') || 
+        pet.breed?.toLowerCase().includes('domestic') ||
+        pet.breed?.toLowerCase().includes('siamese') ||
+        pet.breed?.toLowerCase().includes('persian')) {
+      animalType = 'CAT';
+    } else if (pet.breed?.toLowerCase().includes('lizard') ||
+        pet.breed?.toLowerCase().includes('gecko') ||
+        pet.breed?.toLowerCase().includes('turtle') ||
+        pet.breed?.toLowerCase().includes('snake')) {
+      animalType = 'REPTILE';
+    } else if (pet.breed?.toLowerCase().includes('guinea pig') ||
+        pet.breed?.toLowerCase().includes('hamster') ||
+        pet.breed?.toLowerCase().includes('gerbil')) {
+      animalType = 'SMALL_FURRY';
+    } else if (pet.breed?.toLowerCase().includes('bird') ||
+        pet.breed?.toLowerCase().includes('parrot') ||
+        pet.breed?.toLowerCase().includes('parakeet')) {
+      animalType = 'BIRD';
+    }
+    // Otherwise stays 'OTHER'
   }
 
   return generateSmartTags({

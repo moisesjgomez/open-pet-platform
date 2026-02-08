@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Pet } from '@/lib/adapters/base';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -12,6 +12,7 @@ import {
   FileText, MessageCircle
 } from 'lucide-react';
 import AdoptionFormModal from '@/components/AdoptionFormModal';
+import { loadProfile, updatePreferences, saveProfile, removeFromShortlist } from '@/lib/ai/learning-engine';
 
 // Helper component for compatibility icons
 function CompatibilityIcon({ value, label, icon: Icon }: { value: boolean | null | undefined, label: string, icon: React.ElementType }) {
@@ -54,6 +55,35 @@ export default function PetProfileClient({ pet }: { pet: Pet }) {
   const [showForm, setShowForm] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [copied, setCopied] = useState(false);
+  
+  // SHORTLIST STATE
+  const [isInShortlist, setIsInShortlist] = useState(false);
+  const [showHeartAnimation, setShowHeartAnimation] = useState(false);
+  
+  // Check if pet is in shortlist on mount
+  useEffect(() => {
+    const profile = loadProfile();
+    setIsInShortlist(profile.likedPetIds.includes(pet.id));
+  }, [pet.id]);
+
+  // Toggle shortlist with animation
+  const toggleShortlist = () => {
+    const profile = loadProfile();
+    
+    if (isInShortlist) {
+      // Remove from shortlist
+      const updatedProfile = removeFromShortlist(profile, pet.id);
+      saveProfile(updatedProfile);
+      setIsInShortlist(false);
+    } else {
+      // Add to shortlist with animation
+      const updatedProfile = updatePreferences(profile, pet, 'like');
+      saveProfile(updatedProfile);
+      setIsInShortlist(true);
+      setShowHeartAnimation(true);
+      setTimeout(() => setShowHeartAnimation(false), 1000);
+    }
+  };
 
   // AI MATCH SCORE LOGIC
   const matchScore = pet.tags.includes('Chill') ? 94 : pet.tags.includes('High Energy') ? 88 : 91;
@@ -150,6 +180,37 @@ export default function PetProfileClient({ pet }: { pet: Pet }) {
                   className="bg-white/10 backdrop-blur-md text-white p-3 rounded-full hover:bg-white hover:text-slate-900 transition border border-white/20"
                 >
                     <Share2 size={24} />
+                </button>
+                
+                {/* SHORTLIST HEART BUTTON */}
+                <button 
+                  onClick={toggleShortlist}
+                  className={`relative p-3 rounded-full transition border overflow-hidden ${
+                    isInShortlist 
+                      ? 'bg-red-500 text-white border-red-500 scale-110' 
+                      : 'bg-white/10 backdrop-blur-md text-white border-white/20 hover:bg-white hover:text-red-500'
+                  }`}
+                >
+                  <Heart size={24} fill={isInShortlist ? 'currentColor' : 'none'} className={isInShortlist ? 'animate-pulse' : ''} />
+                  
+                  {/* Floating Hearts Animation */}
+                  {showHeartAnimation && (
+                    <div className="absolute inset-0 pointer-events-none overflow-visible">
+                      {[...Array(6)].map((_, i) => (
+                        <span
+                          key={i}
+                          className="absolute animate-float-heart text-red-400"
+                          style={{
+                            left: `${10 + Math.random() * 80}%`,
+                            animationDelay: `${i * 0.1}s`,
+                            fontSize: `${12 + Math.random() * 8}px`,
+                          }}
+                        >
+                          ❤️
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </button>
             </div>
         </div>

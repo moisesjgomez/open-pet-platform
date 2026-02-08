@@ -1,6 +1,6 @@
 // lib/adapters/petfinder.ts
 import { Client } from '@petfinder/petfinder-js';
-import { Pet, PetDataSource, Organization, HealthInfo } from './base';
+import { Pet, PetDataSource, Organization, HealthInfo, PetSpecies } from './base';
 
 // Petfinder API response types
 interface PetfinderAnimal {
@@ -120,6 +120,20 @@ export class PetfinderAdapter implements PetDataSource {
     return colorParts.length > 0 ? colorParts.join(' / ') : undefined;
   }
 
+  private mapSpecies(species: string): PetSpecies {
+    const speciesMap: Record<string, PetSpecies> = {
+      'Dog': 'Dog',
+      'Cat': 'Cat',
+      'Bird': 'Bird',
+      'Rabbit': 'Rabbit',
+      'Small & Furry': 'Small & Furry',
+      'Scales, Fins & Other': 'Reptile',
+      'Horse': 'Horse',
+      'Barnyard': 'Barnyard',
+    };
+    return speciesMap[species] || 'Other';
+  }
+
   private mapToPet(animal: PetfinderAnimal, org?: Organization): Pet {
     // Map Petfinder size to our size
     const sizeMap: Record<string, Pet['size']> = {
@@ -164,6 +178,7 @@ export class PetfinderAdapter implements PetDataSource {
     return {
       id: String(animal.id),
       name: animal.name,
+      species: this.mapSpecies(animal.species),
       breed: [animal.breeds.primary, animal.breeds.secondary].filter(Boolean).join(' / ') || 'Mixed',
       status: animal.status === 'adoptable' ? 'Available' : 'Pending',
       sex: animal.gender as 'Male' | 'Female',

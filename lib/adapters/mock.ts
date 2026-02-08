@@ -1,4 +1,4 @@
-import { Pet, PetDataSource, Organization } from './base';
+import { Pet, PetDataSource, Organization, PetSpecies } from './base';
 
 // Mock organizations
 const mockOrganizations: Record<string, Organization> = {
@@ -34,6 +34,7 @@ export class MockAdapter implements PetDataSource {
       {
         id: '1',
         name: 'Bandit',
+        species: 'Dog',
         breed: 'Blue Heeler Mix',
         status: 'Available',
         sex: 'Male',
@@ -61,6 +62,7 @@ export class MockAdapter implements PetDataSource {
       {
         id: '4',
         name: 'Rex',
+        species: 'Dog',
         breed: 'German Shepherd',
         status: 'Available',
         sex: 'Male',
@@ -88,6 +90,7 @@ export class MockAdapter implements PetDataSource {
       {
         id: '5',
         name: 'Pip',
+        species: 'Dog',
         breed: 'Jack Russell',
         status: 'Available',
         sex: 'Male',
@@ -114,6 +117,7 @@ export class MockAdapter implements PetDataSource {
       {
         id: '7',
         name: 'Thor',
+        species: 'Dog',
         breed: 'Husky',
         status: 'Available',
         sex: 'Male',
@@ -142,6 +146,7 @@ export class MockAdapter implements PetDataSource {
       {
         id: '9',
         name: 'Daisy',
+        species: 'Dog',
         breed: 'Pit Bull Mix',
         status: 'Available',
         sex: 'Female',
@@ -169,6 +174,7 @@ export class MockAdapter implements PetDataSource {
       {
         id: '10',
         name: 'Chip',
+        species: 'Dog',
         breed: 'Beagle',
         status: 'Available',
         sex: 'Male',
@@ -195,6 +201,7 @@ export class MockAdapter implements PetDataSource {
       {
         id: '11',
         name: 'Bear',
+        species: 'Dog',
         breed: 'Newfoundland',
         status: 'Pending',
         sex: 'Male',
@@ -222,6 +229,7 @@ export class MockAdapter implements PetDataSource {
       {
         id: '12',
         name: 'Coco',
+        species: 'Dog',
         breed: 'Poodle Mix',
         status: 'Available',
         sex: 'Female',
@@ -249,6 +257,7 @@ export class MockAdapter implements PetDataSource {
       {
         id: '2',
         name: 'Luna',
+        species: 'Cat',
         breed: 'Siamese',
         status: 'Available',
         sex: 'Female',
@@ -276,6 +285,7 @@ export class MockAdapter implements PetDataSource {
       {
         id: '3',
         name: 'Oliver',
+        species: 'Cat',
         breed: 'Orange Tabby',
         status: 'Available',
         sex: 'Male',
@@ -304,6 +314,7 @@ export class MockAdapter implements PetDataSource {
       {
         id: '6',
         name: 'Mittens',
+        species: 'Cat',
         breed: 'Tuxedo Cat',
         status: 'Available',
         sex: 'Female',
@@ -332,6 +343,7 @@ export class MockAdapter implements PetDataSource {
       {
         id: '8',
         name: 'Shadow',
+        species: 'Cat',
         breed: 'Black Cat',
         status: 'Available',
         sex: 'Male',
@@ -358,6 +370,7 @@ export class MockAdapter implements PetDataSource {
       {
         id: '13',
         name: 'Simba',
+        species: 'Cat',
         breed: 'Maine Coon Mix',
         status: 'Available',
         sex: 'Male',
@@ -385,6 +398,7 @@ export class MockAdapter implements PetDataSource {
       {
         id: '14',
         name: 'Bella',
+        species: 'Cat',
         breed: 'Calico',
         status: 'Available',
         sex: 'Female',

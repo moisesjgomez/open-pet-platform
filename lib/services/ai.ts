@@ -351,38 +351,11 @@ function extractProfileFromMessage(message: string, currentProfile: UserProfile)
 function filterPetsByProfile(pets: Pet[], profile: UserProfile): Pet[] {
   let filtered = [...pets];
 
-  // Helper to determine species from pet data
-  const isPetSpecies = (p: Pet, species: 'dog' | 'cat'): boolean => {
-    // Check tags first
-    if (species === 'dog' && p.tags.includes('Dog')) {
-      // Double-check breed to filter out mislabeled small animals
-      const excludeBreeds = ['GUINEA PIG', 'HAMSTER', 'RABBIT', 'BIRD', 'FISH', 'REPTILE', 'FERRET'];
-      if (excludeBreeds.some(b => p.breed?.toUpperCase().includes(b))) {
-        return false;
-      }
-      return true;
-    }
-    if (species === 'cat' && p.tags.includes('Cat')) {
-      return true;
-    }
-    // Fallback: check breed field
-    const breedLower = p.breed?.toLowerCase() || '';
-    if (species === 'dog') {
-      const dogIndicators = ['dog', 'terrier', 'retriever', 'shepherd', 'bulldog', 'poodle', 'beagle', 'boxer', 'pit', 'lab', 'hound', 'collie', 'husky', 'corgi', 'mastiff'];
-      return dogIndicators.some(d => breedLower.includes(d));
-    }
-    if (species === 'cat') {
-      const catIndicators = ['cat', 'kitten', 'tabby', 'siamese', 'persian', 'maine coon', 'domestic shorthair', 'domestic longhair'];
-      return catIndicators.some(c => breedLower.includes(c));
-    }
-    return false;
-  };
-
-  // Species filter
+  // Species filter - now uses the explicit species field
   if (profile.species === 'dog') {
-    filtered = filtered.filter(p => isPetSpecies(p, 'dog'));
+    filtered = filtered.filter(p => p.species === 'Dog');
   } else if (profile.species === 'cat') {
-    filtered = filtered.filter(p => isPetSpecies(p, 'cat'));
+    filtered = filtered.filter(p => p.species === 'Cat');
   }
 
   // Energy filter

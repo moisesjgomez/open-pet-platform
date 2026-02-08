@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Pet } from '@/lib/adapters/base';
 import { PetRepository } from '@/lib/repository'; // Use Real Repo
-import SwipeCard from '@/components/SwipeCard';
+import SwipeCard, { SwipeCardHandle } from '@/components/SwipeCard';
 import SwipeFilterPanel from '@/components/SwipeFilterPanel';
 import { UserPreferences } from '@/components/MatchProfileModal';
-import { Heart, Filter, Home } from 'lucide-react';
+import { Heart, Filter, Home, ExternalLink, Keyboard } from 'lucide-react';
 import Link from 'next/link';
 import { loadProfile, updatePreferences, saveProfile, UserAIProfile } from '@/lib/ai/learning-engine';
 
@@ -58,6 +58,7 @@ export default function SwipePage() {
     goodWithCats: false,
   });
   const [allPets, setAllPets] = useState<Pet[]>([]);
+  const swipeCardRef = useRef<SwipeCardHandle>(null);
 
   // Load filters from localStorage
   useEffect(() => {
@@ -117,6 +118,23 @@ export default function SwipePage() {
       setPets((prev) => prev.slice(1));
     }, 200);
   };
+
+  // 2b. KEYBOARD NAVIGATION - triggers visual swipe animation
+  useEffect(() => {
+    const handleKeyDown = async (e: KeyboardEvent) => {
+      if (pets.length === 0 || loading) return;
+      if (e.key === 'ArrowLeft') {
+        // Trigger the visual animation, which will call onSwipe when complete
+        await swipeCardRef.current?.triggerSwipe('left');
+      }
+      if (e.key === 'ArrowRight') {
+        await swipeCardRef.current?.triggerSwipe('right');
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [pets, loading]);
 
   // 3. Apply Filters Handler
   const handleApplyFilters = () => {
@@ -240,11 +258,106 @@ export default function SwipePage() {
          </button>
       </div>
 
-      <SwipeCard 
-         key={pets[0].id} 
-         pet={pets[0]} 
-         onSwipe={handleSwipe} 
-      />
+      {/* Desktop Split Layout Container */}
+      <div className="h-full w-full flex flex-col md:flex-row">
+        {/* Swipe Card Section - Full on mobile, 45% on desktop */}
+        <div className="relative flex-1 md:flex-none md:w-[45%] h-full">
+          <SwipeCard 
+             ref={swipeCardRef}
+             key={pets[0].id} 
+             pet={pets[0]} 
+             onSwipe={handleSwipe} 
+          />
+        </div>
+
+        {/* Desktop Detail Panel - Hidden on mobile, 55% on desktop */}
+        <div className="hidden md:flex md:w-[55%] h-full flex-col bg-white border-l border-gray-200 pt-20 overflow-y-auto">
+          {/* Pet Photo */}
+          <div className="w-full h-64 bg-gray-100 overflow-hidden">
+            <img 
+              src={pets[0].images?.[0] ?? pets[0].imageUrl} 
+              alt={pets[0].name}
+              className="w-full h-full object-cover"
+            />
+          </div>
+          
+          {/* Pet Details */}
+          <div className="flex-1 p-8 overflow-y-auto">
+            <div className="flex items-baseline justify-between mb-2">
+              <h2 className="text-4xl font-black text-gray-800">{pets[0].name}</h2>
+              <span className="text-xl text-gray-400 font-medium">{pets[0].age}</span>
+            </div>
+            <p className="text-lg text-gray-500 font-medium mb-4">{pets[0].breed}</p>
+            
+            {/* Description */}
+            <div className="mb-6">
+              <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wide mb-2">About Me</h3>
+              <p className="text-gray-700 leading-relaxed">
+                {pets[0].aiSummary || pets[0].description || 'This adorable pet is looking for their forever home!'}
+              </p>
+            </div>
+            
+            {/* Traits */}
+            <div className="mb-6">
+              <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wide mb-3">Traits</h3>
+              <div className="flex flex-wrap gap-2">
+                {pets[0].species && (
+                  <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm font-medium">
+                    {pets[0].species}
+                  </span>
+                )}
+                <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm font-medium">
+                  {pets[0].size}
+                </span>
+                <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm font-medium">
+                  {pets[0].energyLevel} Energy
+                </span>
+                {pets[0].compatibility?.kids && (
+                  <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">
+                    Good with Kids
+                  </span>
+                )}
+                {pets[0].compatibility?.dogs && (
+                  <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">
+                    Good with Dogs
+                  </span>
+                )}
+                {pets[0].compatibility?.cats && (
+                  <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">
+                    Good with Cats
+                  </span>
+                )}
+                {[...(pets[0].aiTags || []), ...pets[0].tags]
+                  .filter((t, i, arr) => arr.indexOf(t) === i)
+                  .filter(t => !['Dog', 'Cat', 'High Energy', 'Low Energy', 'Chill', 'Senior', 'Small', 'Large', 'Medium', 'Good with Kids'].includes(t))
+                  .slice(0, 5)
+                  .map(tag => (
+                    <span key={tag} className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-medium">
+                      {tag}
+                    </span>
+                  ))
+                }
+              </div>
+            </div>
+            
+            {/* View Full Profile Button */}
+            <Link 
+              href={`/pet/${pets[0].id}`}
+              className="inline-flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-full font-bold hover:bg-indigo-700 transition shadow-lg"
+            >
+              View Full Profile <ExternalLink size={18} />
+            </Link>
+          </div>
+        </div>
+      </div>
+
+      {/* Keyboard Hint - Desktop only */}
+      <div className="hidden md:flex absolute bottom-6 left-1/2 -translate-x-1/2 items-center gap-3 bg-white/80 backdrop-blur-sm px-4 py-2 rounded-full shadow-md text-sm text-gray-500 z-30">
+        <Keyboard size={16} />
+        <span><kbd className="px-2 py-0.5 bg-gray-100 rounded text-xs font-mono">←</kbd> Nope</span>
+        <span className="text-gray-300">|</span>
+        <span>Like <kbd className="px-2 py-0.5 bg-gray-100 rounded text-xs font-mono">→</kbd></span>
+      </div>
     </div>
   );
 }

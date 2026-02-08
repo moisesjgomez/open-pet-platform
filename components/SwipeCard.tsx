@@ -3,15 +3,53 @@
 import { motion, useMotionValue, useTransform, useAnimation } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { Pet } from '@/lib/adapters/base';
-import { X, Heart, Zap, Ruler, Users, PawPrint, Sparkles, Info } from 'lucide-react';
-import { useRef } from 'react';
+import { X, Heart, Zap, Ruler, Users, PawPrint, Sparkles, Info, Dog, Cat, Baby, Clock } from 'lucide-react';
+import { useRef, forwardRef, useImperativeHandle } from 'react';
 
 interface Props {
   pet: Pet;
   onSwipe: (direction: 'left' | 'right') => void;
 }
 
-export default function SwipeCard({ pet, onSwipe }: Props) {
+// Expose triggerSwipe method for keyboard navigation
+export interface SwipeCardHandle {
+  triggerSwipe: (direction: 'left' | 'right') => Promise<void>;
+}
+
+// Helper to parse age string to number
+const parseAge = (ageString: string): number => {
+  const match = ageString.match(/(\d+)/);
+  if (!match) return 2;
+  const num = parseInt(match[1]);
+  if (ageString.toLowerCase().includes('month')) return num / 12;
+  return num;
+};
+
+// Get age category based on parsed age
+const getAgeCategory = (ageString: string, species?: string): { label: string; color: string; icon: 'baby' | 'clock' | 'senior' } => {
+  const age = parseAge(ageString);
+  const isCatOrDog = species === 'Dog' || species === 'Cat';
+  
+  if (age < 1) {
+    return { 
+      label: isCatOrDog ? (species === 'Dog' ? 'Puppy' : 'Kitten') : 'Baby', 
+      color: 'bg-pink-100 text-pink-600', 
+      icon: 'baby' 
+    };
+  } else if (age >= 7) {
+    return { label: 'Senior', color: 'bg-amber-100 text-amber-600', icon: 'senior' };
+  }
+  return { label: 'Adult', color: 'bg-blue-100 text-blue-600', icon: 'clock' };
+};
+
+// Get species icon component
+const getSpeciesIcon = (species?: string) => {
+  if (species === 'Dog') return Dog;
+  if (species === 'Cat') return Cat;
+  return PawPrint;
+};
+
+const SwipeCard = forwardRef<SwipeCardHandle, Props>(({ pet, onSwipe }, ref) => {
   const router = useRouter();
   const controls = useAnimation();
   const x = useMotionValue(0); // Tracks how far left/right you dragged
@@ -24,6 +62,18 @@ export default function SwipeCard({ pet, onSwipe }: Props) {
   // 2. Stamps: Show "NOPE" or "LIKE" opacity based on drag distance
   const opacityLike = useTransform(x, [50, 150], [0, 1]);
   const opacityNope = useTransform(x, [-50, -150], [0, 1]);
+
+  // Expose triggerSwipe for keyboard navigation with snappy 200ms animation
+  useImperativeHandle(ref, () => ({
+    triggerSwipe: async (direction: 'left' | 'right') => {
+      const targetX = direction === 'right' ? 500 : -500;
+      await controls.start(
+        { x: targetX, opacity: 0, rotate: direction === 'right' ? 25 : -25 },
+        { duration: 0.2, ease: 'easeOut' }
+      );
+      onSwipe(direction);
+    }
+  }));
 
   const handleDragStart = () => {
     dragStartX.current = x.get();
@@ -54,7 +104,7 @@ export default function SwipeCard({ pet, onSwipe }: Props) {
   };
 
   return (
-    <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center p-4">
+    <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center p-4 pt-16">
       <motion.div
         drag="x" // Enable dragging ONLY on X axis
         dragConstraints={{ left: 0, right: 0 }}
@@ -63,7 +113,7 @@ export default function SwipeCard({ pet, onSwipe }: Props) {
         onClick={handleCardClick}
         animate={controls}
         style={{ x, rotate }}
-        className="relative w-full max-w-sm h-[600px] bg-white rounded-3xl shadow-2xl cursor-grab active:cursor-grabbing overflow-hidden border border-gray-200"
+        className="relative w-full max-w-[340px] md:max-w-sm h-[65vh] md:h-[600px] bg-white rounded-3xl shadow-2xl cursor-grab active:cursor-grabbing overflow-hidden border border-gray-200 touch-manipulation"
       >
         {/* The Pet Photo - use images array if available, fallback to imageUrl */}
         <div className="relative h-3/4 w-full bg-gray-100">
@@ -104,8 +154,8 @@ export default function SwipeCard({ pet, onSwipe }: Props) {
            </motion.div>
         </div>
 
-        {/* The Text Info */}
-        <div className="h-auto min-h-[25%] p-6 bg-white flex flex-col justify-center gap-3">
+        {/* The Text Info - scrollable on mobile for more content */}
+        <div className="h-auto min-h-[30%] max-h-[40%] p-6 bg-white flex flex-col justify-start gap-3 overflow-y-auto">
           <div className="flex justify-between items-end">
              <div>
                 <h2 className="text-3xl font-black text-gray-800">{pet.name}</h2>
@@ -123,6 +173,26 @@ export default function SwipeCard({ pet, onSwipe }: Props) {
 
           {/* NEW: Rich Data Badges */}
           <div className="flex flex-wrap gap-2">
+            {/* Species Badge */}
+            {pet.species && (() => {
+              const SpeciesIcon = getSpeciesIcon(pet.species);
+              return (
+                <div className="flex items-center gap-1 px-2 py-1 rounded-md bg-gray-100 text-gray-700 text-xs font-bold">
+                  <SpeciesIcon size={12} /> {pet.species}
+                </div>
+              );
+            })()}
+
+            {/* Age Category Badge */}
+            {(() => {
+              const ageCategory = getAgeCategory(pet.age, pet.species);
+              return (
+                <div className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs font-bold ${ageCategory.color}`}>
+                  {ageCategory.icon === 'baby' ? <Baby size={12} /> : <Clock size={12} />} {ageCategory.label}
+                </div>
+              );
+            })()}
+
             {/* Energy Badge */}
             <div className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs font-bold ${
               pet.energyLevel === 'High' ? 'bg-orange-100 text-orange-600' :
@@ -159,14 +229,26 @@ export default function SwipeCard({ pet, onSwipe }: Props) {
       </motion.div>
 
       {/* Manual Buttons (Below the card) */}
-      <div className="absolute bottom-8 flex gap-8 z-[-1]"> 
-         <button onClick={() => { controls.start({ x: -500 }); onSwipe('left'); }} className="p-4 bg-white shadow-xl rounded-full text-red-500 hover:scale-110 transition">
-            <X size={32} />
+      <div className="absolute bottom-6 md:bottom-8 left-1/2 -translate-x-1/2 flex gap-6 md:gap-8 z-10"> 
+         <button 
+           onClick={() => { controls.start({ x: -500 }); onSwipe('left'); }} 
+           className="p-5 md:p-4 bg-white shadow-xl rounded-full text-red-500 hover:scale-110 active:scale-95 transition touch-manipulation"
+         >
+            <X size={36} className="md:hidden" />
+            <X size={32} className="hidden md:block" />
          </button>
-         <button onClick={() => { controls.start({ x: 500 }); onSwipe('right'); }} className="p-4 bg-white shadow-xl rounded-full text-green-500 hover:scale-110 transition">
-            <Heart size={32} fill="currentColor" />
+         <button 
+           onClick={() => { controls.start({ x: 500 }); onSwipe('right'); }} 
+           className="p-5 md:p-4 bg-white shadow-xl rounded-full text-green-500 hover:scale-110 active:scale-95 transition touch-manipulation"
+         >
+            <Heart size={36} fill="currentColor" className="md:hidden" />
+            <Heart size={32} fill="currentColor" className="hidden md:block" />
          </button>
       </div>
     </div>
   );
-}
+});
+
+SwipeCard.displayName = 'SwipeCard';
+
+export default SwipeCard;

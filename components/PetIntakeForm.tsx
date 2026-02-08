@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Pet } from '@/lib/adapters/base';
+import { Pet, PetSpecies } from '@/lib/adapters/base';
 import { X, Sparkles, Loader2, Check } from 'lucide-react';
 import { generatePetBio } from '@/lib/services/ai';
 
@@ -24,6 +24,7 @@ export default function PetIntakeForm({ onSave, onCancel }: Props) {
     breed: '',
     age: '',
     sex: 'Male' as 'Male' | 'Female',
+    species: 'Dog' as PetSpecies, // Default to Dog
     size: 'Medium', // New field for Size
     imageUrl: '',
     description: '',
@@ -62,12 +63,13 @@ export default function PetIntakeForm({ onSave, onCancel }: Props) {
     const diffTime = Math.abs(today.getTime() - arrival.getTime());
     const daysInShelter = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
 
-    // Combine Size into tags for the filter engine
-    const finalTags = [...selectedTags, formData.size];
+    // Combine Size and Species into tags for the filter engine
+    const finalTags = [...selectedTags, formData.size, formData.species];
 
     const newPet: Pet = {
       id: Math.random().toString(),
       name: formData.name,
+      species: formData.species,
       breed: formData.breed,
       age: formData.age,
       imageUrl: formData.imageUrl || 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&w=800',

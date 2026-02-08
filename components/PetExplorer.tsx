@@ -1,12 +1,28 @@
 'use client';
 
-import { Pet } from '@/lib/adapters/base';
-import { useState, useEffect, useMemo } from 'react';
+import { Pet, PetSpecies } from '@/lib/adapters/base';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Search, Dog, Cat, LayoutGrid, List, Grid3x3, SlidersHorizontal, X, Check, UserCircle, Sparkles, MapPin, Navigation, Loader2, RotateCcw, Baby, Users, Zap } from 'lucide-react';
+import { Search, Dog, Cat, LayoutGrid, List, Grid3x3, SlidersHorizontal, X, Check, UserCircle, Sparkles, MapPin, Navigation, Loader2, RotateCcw, Baby, Users, Zap, Bird, Rabbit, Fish, Bug } from 'lucide-react';
 import MatchProfileModal, { UserPreferences } from './MatchProfileModal'; // Import the new modal
 import { loadProfile, getRecommendedPets } from '@/lib/ai/learning-engine';
+
+// Species filter options with icons and colors
+const SPECIES_FILTERS: { value: PetSpecies | 'All'; label: string; icon?: React.ElementType; color: string }[] = [
+  { value: 'All', label: 'All Pets', color: 'bg-slate-900 text-white' },
+  { value: 'Dog', label: 'Dogs', icon: Dog, color: 'bg-blue-600 text-white' },
+  { value: 'Cat', label: 'Cats', icon: Cat, color: 'bg-amber-500 text-white' },
+  { value: 'Bird', label: 'Birds', icon: Bird, color: 'bg-sky-500 text-white' },
+  { value: 'Rabbit', label: 'Rabbits', icon: Rabbit, color: 'bg-pink-500 text-white' },
+  { value: 'Small & Furry', label: 'Small Pets', icon: Bug, color: 'bg-green-600 text-white' },
+  { value: 'Reptile', label: 'Reptiles', icon: Bug, color: 'bg-emerald-600 text-white' },
+  { value: 'Fish', label: 'Fish', icon: Fish, color: 'bg-cyan-600 text-white' },
+  { value: 'Other', label: 'Other', color: 'bg-gray-600 text-white' },
+];
+
+// Batch size for infinite scroll
+const BATCH_SIZE = 12;
 import { 
   getCachedLocation, 
   getUserLocation, 
@@ -76,7 +92,13 @@ export default function PetExplorer({ initialPets, locationSearchEnabled = false
   // FILTER STATE
   const [searchTerm, setSearchTerm] = useState('');
   const [filterMode, setFilterMode] = useState<'All' | 'Dogs' | 'Cats' | 'Recommended'>('All');
+  const [speciesFilter, setSpeciesFilter] = useState<PetSpecies | 'All'>('All');
   const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
+  
+  // INFINITE SCROLL STATE
+  const [visibleCount, setVisibleCount] = useState(BATCH_SIZE);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const loadMoreRef = useRef<HTMLDivElement>(null);
   
   // USER PREFERENCES (Loaded from local storage)
   const [userPrefs, setUserPrefs] = useState<UserPreferences | null>(null);
@@ -235,15 +257,18 @@ export default function PetExplorer({ initialPets, locationSearchEnabled = false
       pet.breed.toLowerCase().includes(searchLower) ||
       pet.tags.some(t => t.toLowerCase().includes(searchLower));
 
-    // 2. Main Filter Modes (Fixed Logic using Tags)
+    // 2. Species Filter (uses the explicit species field)
+    if (speciesFilter !== 'All' && pet.species !== speciesFilter) return false;
+
+    // 3. Main Filter Modes (uses species field)
     let matchesMode = true;
-    if (filterMode === 'Dogs') matchesMode = pet.tags.includes('Dog');
-    if (filterMode === 'Cats') matchesMode = pet.tags.includes('Cat');
+    if (filterMode === 'Dogs') matchesMode = pet.species === 'Dog';
+    if (filterMode === 'Cats') matchesMode = pet.species === 'Cat';
     
     // Skip AI filtering here - we'll do it after
     if (filterMode === 'Recommended') matchesMode = true;
     
-    // 3. Basic Filters
+    // 4. Basic Filters
     if (filters.ageFilter !== 'All') {
         const ageCat = getAgeCategory(pet.age);
         if (ageCat !== filters.ageFilter) return false;
@@ -274,6 +299,37 @@ export default function PetExplorer({ initialPets, locationSearchEnabled = false
     const aiProfile = loadProfile();
     filteredPets = getRecommendedPets(filteredPets, aiProfile);
   }
+
+  // Reset visible count when filters change
+  useEffect(() => {
+    setVisibleCount(BATCH_SIZE);
+  }, [searchTerm, filterMode, speciesFilter, filters]);
+
+  // Infinite scroll observer
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && visibleCount < filteredPets.length) {
+          setIsLoadingMore(true);
+          // Simulate slight delay for smooth UX
+          setTimeout(() => {
+            setVisibleCount(prev => Math.min(prev + BATCH_SIZE, filteredPets.length));
+            setIsLoadingMore(false);
+          }, 300);
+        }
+      },
+      { threshold: 0.1, rootMargin: '100px' }
+    );
+
+    if (loadMoreRef.current) {
+      observer.observe(loadMoreRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, [visibleCount, filteredPets.length]);
+
+  // Get visible pets for infinite scroll
+  const visiblePets = filteredPets.slice(0, visibleCount);
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-12">
@@ -376,6 +432,33 @@ export default function PetExplorer({ initialPets, locationSearchEnabled = false
           )}
         </div>
       )}
+
+      {/* SPECIES FILTER PILLS - Horizontal scrollable */}
+      <div className="mb-6 overflow-x-auto pb-2 -mx-2 px-2 scrollbar-hide">
+        <div className="flex gap-2 min-w-max">
+          {SPECIES_FILTERS.map((species) => {
+            const isActive = speciesFilter === species.value;
+            const Icon = species.icon;
+            return (
+              <button
+                key={species.value}
+                onClick={() => {
+                  setSpeciesFilter(species.value);
+                  setFilterMode('All'); // Reset legacy filter mode when using species pills
+                }}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-full font-bold text-sm transition-all whitespace-nowrap ${
+                  isActive 
+                    ? species.color + ' shadow-lg scale-105' 
+                    : 'bg-white border border-gray-200 text-gray-600 hover:border-gray-400 hover:bg-gray-50'
+                }`}
+              >
+                {Icon && <Icon size={16} />}
+                {species.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
       {/* CONTROLS HEADER */}
       <div className="flex flex-col gap-6 mb-8">
@@ -710,18 +793,19 @@ export default function PetExplorer({ initialPets, locationSearchEnabled = false
             <h3 className="text-xl font-bold text-slate-900">No pets match your criteria.</h3>
             <p className="text-gray-500 mt-2">Try adjusting your profile or filters to be less strict.</p>
             <div className="flex gap-4 justify-center mt-6">
-                 <button onClick={() => setFilterMode('All')} className="text-blue-600 font-bold hover:underline">View All Pets</button>
+                 <button onClick={() => { setFilterMode('All'); setSpeciesFilter('All'); }} className="text-blue-600 font-bold hover:underline">View All Pets</button>
                  <button onClick={() => setShowProfileModal(true)} className="text-slate-900 font-bold hover:underline">Edit Profile</button>
             </div>
         </div>
       ) : (
+        <>
         <div className={
             viewMode === 'grid' ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8" : 
             viewMode === 'list' ? "flex flex-col gap-4" :
             "grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-1"
         }>
           
-          {filteredPets.map((pet) => {
+          {visiblePets.map((pet) => {
             // GRID CARD
             if (viewMode === 'grid') return (
                 <div key={pet.id} className="group bg-white rounded-3xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-xl transition-all duration-300">
@@ -831,6 +915,20 @@ export default function PetExplorer({ initialPets, locationSearchEnabled = false
             );
           })}
         </div>
+        
+        {/* Infinite Scroll Loader */}
+        <div ref={loadMoreRef} className="py-8 flex justify-center">
+          {isLoadingMore && (
+            <div className="flex items-center gap-2 text-gray-500">
+              <Loader2 className="animate-spin" size={20} />
+              <span className="font-medium">Loading more pets...</span>
+            </div>
+          )}
+          {!isLoadingMore && visibleCount >= filteredPets.length && filteredPets.length > BATCH_SIZE && (
+            <p className="text-gray-400 font-medium">You've seen all {filteredPets.length} pets! 🎉</p>
+          )}
+        </div>
+        </>
       )}
 
       {/* MATCH PROFILE MODAL */}
