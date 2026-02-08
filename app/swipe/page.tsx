@@ -1,14 +1,16 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Pet } from '@/lib/adapters/base';
 import { PetRepository } from '@/lib/repository'; // Use Real Repo
 import SwipeCard, { SwipeCardHandle } from '@/components/SwipeCard';
 import SwipeFilterPanel from '@/components/SwipeFilterPanel';
 import { UserPreferences } from '@/components/MatchProfileModal';
-import { Heart, Filter, Home, ExternalLink, Keyboard } from 'lucide-react';
+import { Heart, Filter, Home, ExternalLink, Keyboard, Undo2, ChevronLeft, ChevronRight, Sparkles, Calendar, Ruler, Zap, MapPin, Baby, Dog, Cat, Syringe, ShieldCheck, Cpu, Building } from 'lucide-react';
 import Link from 'next/link';
-import { loadProfile, updatePreferences, saveProfile, UserAIProfile } from '@/lib/ai/learning-engine';
+import { loadProfile, updatePreferences, saveProfile, undoSwipe, UserAIProfile } from '@/lib/ai/learning-engine';
+import OnboardingWizard, { OnboardingData } from '@/components/OnboardingWizard';
+import MobileDetailSheet from '@/components/MobileDetailSheet';
 
 // Helper to parse age from string (e.g., "3 years" -> 3)
 const parseAge = (ageString: string): number => {
@@ -58,6 +60,18 @@ export default function SwipePage() {
     goodWithCats: false,
   });
   const [allPets, setAllPets] = useState<Pet[]>([]);
+  
+  // UX Enhancement State
+  const [showToast, setShowToast] = useState(false);
+  const [lastSwipedPet, setLastSwipedPet] = useState<Pet | null>(null);
+  const [lastSwipeWasLike, setLastSwipeWasLike] = useState(false);
+  const [showUndoButton, setShowUndoButton] = useState(false);
+  const [showTutorial, setShowTutorial] = useState(false);
+  const [showOnboardingPrompt, setShowOnboardingPrompt] = useState(false);
+  const [showOnboardingWizard, setShowOnboardingWizard] = useState(false);
+  const [showMobileSheet, setShowMobileSheet] = useState(false);
+  const undoTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const swipeCountRef = useRef(0);
   const swipeCardRef = useRef<SwipeCardHandle>(null);
 
   // Load filters from localStorage
@@ -95,34 +109,138 @@ export default function SwipePage() {
       
       setPets(unseenPets);
       setLoading(false);
+      
+      // Check if first-time user for tutorial
+      const hasSeenTutorial = localStorage.getItem('hasSeenSwipeTutorial');
+      if (!hasSeenTutorial && unseenPets.length > 0) {
+        setShowTutorial(true);
+      }
     };
     loadPets();
+  }, []);
+
+  // Dismiss tutorial on first interaction
+  const dismissTutorial = useCallback(() => {
+    setShowTutorial(false);
+    localStorage.setItem('hasSeenSwipeTutorial', 'true');
   }, []);
 
   // 2. AI-POWERED SWIPE HANDLER
   const handleSwipe = (direction: 'left' | 'right') => {
     const currentPet = pets[0];
+    const isLike = direction === 'right';
+    
+    // Dismiss tutorial on first swipe
+    if (showTutorial) {
+      dismissTutorial();
+    }
     
     if (aiProfile) {
       // Update AI Profile based on swipe
-      const action = direction === 'right' ? 'like' : 'nope';
+      const action = isLike ? 'like' : 'nope';
       const updatedProfile = updatePreferences(aiProfile, currentPet, action);
       
       // Save to localStorage
       saveProfile(updatedProfile);
       setAiProfile(updatedProfile);
+      
+      // Store for undo
+      setLastSwipedPet(currentPet);
+      setLastSwipeWasLike(isLike);
+      
+      // Show toast for likes
+      if (isLike) {
+        setShowToast(true);
+        setTimeout(() => setShowToast(false), 2000);
+      }
+      
+      // Show undo button
+      if (undoTimeoutRef.current) {
+        clearTimeout(undoTimeoutRef.current);
+      }
+      setShowUndoButton(true);
+      undoTimeoutRef.current = setTimeout(() => {
+        setShowUndoButton(false);
+        setLastSwipedPet(null);
+      }, 5000);
+      
+      // Track swipe count for onboarding prompt
+      swipeCountRef.current += 1;
+      const hasCompletedOnboarding = localStorage.getItem('hasCompletedOnboarding');
+      const hasDismissedOnboardingPrompt = localStorage.getItem('hasDismissedOnboardingPrompt');
+      
+      // Show onboarding prompt after 4 swipes if not completed
+      if (swipeCountRef.current === 4 && !hasCompletedOnboarding && !hasDismissedOnboardingPrompt) {
+        setShowOnboardingPrompt(true);
+      }
     }
 
     // Remove the card from the screen
+    setShowMobileSheet(false); // Close mobile sheet when swiping
     setTimeout(() => {
       setPets((prev) => prev.slice(1));
     }, 200);
   };
+  
+  // ONBOARDING HANDLERS
+  const handleOnboardingComplete = useCallback(async (data: OnboardingData) => {
+    setShowOnboardingWizard(false);
+    localStorage.setItem('hasCompletedOnboarding', 'true');
+    
+    // Also store in localStorage for anonymous users
+    localStorage.setItem('onboardingData', JSON.stringify(data));
+    
+    // Try to save to database if logged in
+    try {
+      const response = await fetch('/api/profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) {
+        console.log('Profile saved to localStorage only (not logged in)');
+      }
+    } catch (error) {
+      console.log('Profile saved to localStorage only');
+    }
+  }, []);
+
+  const handleOnboardingSkip = useCallback(() => {
+    setShowOnboardingWizard(false);
+    setShowOnboardingPrompt(false);
+    localStorage.setItem('hasDismissedOnboardingPrompt', 'true');
+  }, []);
+  
+  // UNDO HANDLER
+  const handleUndo = useCallback(() => {
+    if (!lastSwipedPet || !aiProfile) return;
+    
+    // Reverse the swipe in AI profile
+    const updatedProfile = undoSwipe(aiProfile, lastSwipedPet, lastSwipeWasLike);
+    saveProfile(updatedProfile);
+    setAiProfile(updatedProfile);
+    
+    // Add the pet back to the front of the deck
+    setPets((prev) => [lastSwipedPet, ...prev]);
+    
+    // Clear undo state
+    setShowUndoButton(false);
+    setLastSwipedPet(null);
+    if (undoTimeoutRef.current) {
+      clearTimeout(undoTimeoutRef.current);
+    }
+  }, [lastSwipedPet, lastSwipeWasLike, aiProfile]);
 
   // 2b. KEYBOARD NAVIGATION - triggers visual swipe animation
   useEffect(() => {
     const handleKeyDown = async (e: KeyboardEvent) => {
       if (pets.length === 0 || loading) return;
+      
+      // Dismiss tutorial on any key
+      if (showTutorial) {
+        dismissTutorial();
+      }
+      
       if (e.key === 'ArrowLeft') {
         // Trigger the visual animation, which will call onSwipe when complete
         await swipeCardRef.current?.triggerSwipe('left');
@@ -261,108 +379,275 @@ export default function SwipePage() {
       {/* Desktop Split Layout Container */}
       <div className="h-full w-full flex flex-col md:flex-row">
         {/* Swipe Card Section - Full on mobile, 50% on desktop */}
-        <div className="relative flex-1 md:flex-none md:w-[50%] lg:w-[55%] h-full">
-          <SwipeCard 
-             ref={swipeCardRef}
-             key={pets[0].id} 
-             pet={pets[0]} 
-             onSwipe={handleSwipe} 
-          />
+        <div className="relative flex-1 md:flex-none md:w-[50%] lg:w-[55%] h-full flex flex-col">
+          <div className="flex-1 relative">
+            <SwipeCard 
+               ref={swipeCardRef}
+               key={pets[0].id} 
+               pet={pets[0]} 
+               onSwipe={handleSwipe} 
+            />
+            
+            {/* Mobile Detail Sheet */}
+            <MobileDetailSheet
+              pet={pets[0]}
+              isOpen={showMobileSheet}
+              onToggle={() => setShowMobileSheet(!showMobileSheet)}
+              onClose={() => setShowMobileSheet(false)}
+            />
+          </div>
+          
+          {/* Keyboard Hint - Below buttons on desktop */}
+          <div className="hidden md:flex justify-center pb-4">
+            <div className="flex items-center gap-4 bg-white/90 backdrop-blur-sm px-5 py-2.5 rounded-full shadow-lg text-sm text-gray-600">
+              <kbd className="px-2 py-1 bg-gray-100 rounded text-xs font-mono">←</kbd>
+              <span className="font-medium">Nope</span>
+              <Keyboard size={16} className="text-gray-400 mx-2" />
+              <span className="font-medium">Like</span>
+              <kbd className="px-2 py-1 bg-gray-100 rounded text-xs font-mono">→</kbd>
+            </div>
+          </div>
         </div>
 
         {/* Desktop Detail Panel - Hidden on mobile, 50% on desktop */}
-        <div className="hidden md:flex md:w-[50%] lg:w-[45%] h-full flex-col bg-white border-l border-gray-200 pt-20 overflow-y-auto">
-          {/* Pet Photo Gallery - show multiple if available */}
-          <div className="w-full h-56 lg:h-72 bg-gray-100 overflow-hidden relative">
-            <img 
-              src={pets[0].images?.[0] ?? pets[0].imageUrl} 
-              alt={pets[0].name}
-              className="w-full h-full object-cover"
-            />
-            {pets[0].images && pets[0].images.length > 1 && (
-              <div className="absolute bottom-3 right-3 bg-black/60 text-white text-xs px-2 py-1 rounded-full">
-                📷 {pets[0].images.length} photos
-              </div>
-            )}
-          </div>
-          
-          {/* Pet Details */}
-          <div className="flex-1 p-8 overflow-y-auto">
-            <div className="flex items-baseline justify-between mb-2">
-              <h2 className="text-4xl font-black text-gray-800">{pets[0].name}</h2>
-              <span className="text-xl text-gray-400 font-medium">{pets[0].age}</span>
-            </div>
-            <p className="text-lg text-gray-500 font-medium mb-4">{pets[0].breed}</p>
+        <div className="hidden md:flex md:w-[50%] lg:w-[45%] h-full flex-col bg-gradient-to-b from-slate-50 to-white border-l border-slate-200 pt-20 overflow-y-auto">
+          <div className="flex-1 p-6 lg:p-8">
             
-            {/* Description */}
-            <div className="mb-6">
-              <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wide mb-2">About Me</h3>
-              <p className="text-gray-700 leading-relaxed">
+            {/* Match Score & Urgency Banner */}
+            <div className="flex flex-wrap gap-2 mb-5">
+              {aiProfile && (
+                <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-500 to-indigo-600 text-white rounded-full shadow-md">
+                  <Sparkles size={16} />
+                  <span className="font-bold text-sm">Great Match!</span>
+                </div>
+              )}
+              {pets[0].daysInShelter && pets[0].daysInShelter > 30 && (
+                <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 text-amber-700 rounded-full border border-amber-200">
+                  <Calendar size={14} />
+                  <span className="font-semibold text-sm">{pets[0].daysInShelter} days waiting</span>
+                </div>
+              )}
+            </div>
+            
+            {/* Name & Breed Header */}
+            <div className="mb-5">
+              <h2 className="text-3xl lg:text-4xl font-black text-slate-800">{pets[0].name}</h2>
+              <p className="text-lg text-slate-500 font-medium">{pets[0].breed}</p>
+            </div>
+            
+            {/* Quick Stats Grid */}
+            <div className="grid grid-cols-4 gap-2 lg:gap-3 mb-6">
+              <div className="text-center p-3 bg-white rounded-xl border border-slate-100 shadow-sm">
+                <Calendar size={18} className="mx-auto text-indigo-400 mb-1" />
+                <div className="text-xs lg:text-sm font-bold text-slate-700">{pets[0].age}</div>
+              </div>
+              <div className="text-center p-3 bg-white rounded-xl border border-slate-100 shadow-sm">
+                <Ruler size={18} className="mx-auto text-indigo-400 mb-1" />
+                <div className="text-xs lg:text-sm font-bold text-slate-700">{pets[0].size}</div>
+              </div>
+              <div className="text-center p-3 bg-white rounded-xl border border-slate-100 shadow-sm">
+                <Zap size={18} className={`mx-auto mb-1 ${pets[0].energyLevel === 'High' ? 'text-orange-400' : pets[0].energyLevel === 'Low' ? 'text-indigo-400' : 'text-yellow-400'}`} />
+                <div className="text-xs lg:text-sm font-bold text-slate-700">{pets[0].energyLevel}</div>
+              </div>
+              <div className="text-center p-3 bg-white rounded-xl border border-slate-100 shadow-sm">
+                <MapPin size={18} className="mx-auto text-indigo-400 mb-1" />
+                <div className="text-xs lg:text-sm font-bold text-slate-700 truncate">{pets[0].distance ? `${pets[0].distance}mi` : 'Local'}</div>
+              </div>
+            </div>
+            
+            {/* Compatibility Badges */}
+            <div className="flex flex-wrap gap-2 mb-6">
+              {pets[0].compatibility?.kids && (
+                <span className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-full text-sm font-medium border border-indigo-100">
+                  <Baby size={14} /> Kids OK
+                </span>
+              )}
+              {pets[0].compatibility?.dogs && (
+                <span className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-full text-sm font-medium border border-indigo-100">
+                  <Dog size={14} /> Dogs OK
+                </span>
+              )}
+              {pets[0].compatibility?.cats && (
+                <span className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-full text-sm font-medium border border-indigo-100">
+                  <Cat size={14} /> Cats OK
+                </span>
+              )}
+              {pets[0].houseTrained && (
+                <span className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-full text-sm font-medium border border-indigo-100">
+                  <Home size={14} /> House Trained
+                </span>
+              )}
+            </div>
+            
+            {/* About Section */}
+            <div className="mb-6 p-4 bg-white rounded-xl border border-slate-100 shadow-sm">
+              <h3 className="text-xs font-bold text-indigo-400 uppercase tracking-wide mb-2">About Me</h3>
+              <p className="text-slate-700 leading-relaxed text-sm lg:text-base">
                 {pets[0].aiSummary || pets[0].description || 'This adorable pet is looking for their forever home!'}
               </p>
             </div>
             
-            {/* Traits */}
-            <div className="mb-6">
-              <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wide mb-3">Traits</h3>
-              <div className="flex flex-wrap gap-2">
-                {pets[0].species && (
-                  <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm font-medium">
-                    {pets[0].species}
-                  </span>
-                )}
-                <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm font-medium">
-                  {pets[0].size}
-                </span>
-                <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm font-medium">
-                  {pets[0].energyLevel} Energy
-                </span>
-                {pets[0].compatibility?.kids && (
-                  <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">
-                    Good with Kids
-                  </span>
-                )}
-                {pets[0].compatibility?.dogs && (
-                  <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">
-                    Good with Dogs
-                  </span>
-                )}
-                {pets[0].compatibility?.cats && (
-                  <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">
-                    Good with Cats
-                  </span>
-                )}
-                {[...(pets[0].aiTags || []), ...pets[0].tags]
-                  .filter((t, i, arr) => arr.indexOf(t) === i)
-                  .filter(t => !['Dog', 'Cat', 'High Energy', 'Low Energy', 'Chill', 'Senior', 'Small', 'Large', 'Medium', 'Good with Kids'].includes(t))
-                  .slice(0, 5)
-                  .map(tag => (
-                    <span key={tag} className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-medium">
-                      {tag}
-                    </span>
-                  ))
-                }
+            {/* Health Quick Glance */}
+            {pets[0].health && (pets[0].health.vaccinated || pets[0].health.spayedNeutered || pets[0].health.microchipped) && (
+              <div className="flex items-center gap-4 p-4 bg-white rounded-xl border border-slate-100 shadow-sm mb-6">
+                <span className="text-xs font-bold text-indigo-400 uppercase">Health</span>
+                <div className="flex flex-wrap gap-3">
+                  {pets[0].health.vaccinated && (
+                    <div className="flex items-center gap-1 text-emerald-600" title="Vaccinated">
+                      <Syringe size={14} />
+                      <span className="text-xs font-medium">Vaxxed</span>
+                    </div>
+                  )}
+                  {pets[0].health.spayedNeutered && (
+                    <div className="flex items-center gap-1 text-emerald-600" title="Spayed/Neutered">
+                      <ShieldCheck size={14} />
+                      <span className="text-xs font-medium">Fixed</span>
+                    </div>
+                  )}
+                  {pets[0].health.microchipped && (
+                    <div className="flex items-center gap-1 text-emerald-600" title="Microchipped">
+                      <Cpu size={14} />
+                      <span className="text-xs font-medium">Chipped</span>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
+            )}
+            
+            {/* Personality Tags */}
+            {[...(pets[0].aiTags || []), ...pets[0].tags].filter((t, i, arr) => arr.indexOf(t) === i).filter(t => !['Dog', 'Cat', 'High Energy', 'Low Energy', 'Chill', 'Senior', 'Small', 'Large', 'Medium', 'Good with Kids'].includes(t)).length > 0 && (
+              <div className="mb-6">
+                <h3 className="text-xs font-bold text-indigo-400 uppercase tracking-wide mb-2">Personality</h3>
+                <div className="flex flex-wrap gap-2">
+                  {[...(pets[0].aiTags || []), ...pets[0].tags]
+                    .filter((t, i, arr) => arr.indexOf(t) === i)
+                    .filter(t => !['Dog', 'Cat', 'High Energy', 'Low Energy', 'Chill', 'Senior', 'Small', 'Large', 'Medium', 'Good with Kids'].includes(t))
+                    .slice(0, 5)
+                    .map(tag => (
+                      <span key={tag} className="px-3 py-1 bg-slate-100 text-slate-600 rounded-full text-sm font-medium">
+                        {tag}
+                      </span>
+                    ))
+                  }
+                </div>
+              </div>
+            )}
             
             {/* View Full Profile Button */}
             <Link 
               href={`/pet/${pets[0].id}`}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-full font-bold hover:bg-indigo-700 transition shadow-lg"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-full font-bold hover:bg-indigo-700 transition shadow-lg hover:shadow-xl"
             >
               View Full Profile <ExternalLink size={18} />
             </Link>
+            
+            {/* Shelter Info Footer */}
+            {(pets[0].organization || pets[0].location) && (
+              <div className="mt-8 pt-6 border-t border-slate-100">
+                <div className="flex items-center gap-2 text-sm text-slate-500">
+                  <Building size={14} className="text-slate-400" />
+                  {pets[0].organization ? (
+                    <span>From <strong className="text-slate-700">{pets[0].organization.name}</strong></span>
+                  ) : pets[0].location && (
+                    <span>{pets[0].location}</span>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
-
-      {/* Keyboard Hint - Desktop only */}
-      <div className="hidden md:flex absolute bottom-6 left-1/2 -translate-x-1/2 items-center gap-3 bg-white/80 backdrop-blur-sm px-4 py-2 rounded-full shadow-md text-sm text-gray-500 z-30">
-        <Keyboard size={16} />
-        <span><kbd className="px-2 py-0.5 bg-gray-100 rounded text-xs font-mono">←</kbd> Nope</span>
-        <span className="text-gray-300">|</span>
-        <span>Like <kbd className="px-2 py-0.5 bg-gray-100 rounded text-xs font-mono">→</kbd></span>
+      
+      {/* Toast Notification - Added to Shortlist */}
+      <div 
+        className={`fixed bottom-24 left-1/2 -translate-x-1/2 bg-green-600 text-white px-6 py-3 rounded-full font-bold shadow-lg z-50 transition-all duration-300 flex items-center gap-2 ${
+          showToast ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'
+        }`}
+      >
+        <Heart size={20} fill="white" />
+        Added to Shortlist!
       </div>
+      
+      {/* Undo Button */}
+      <button
+        onClick={handleUndo}
+        className={`fixed bottom-24 right-6 bg-white text-slate-700 px-4 py-3 rounded-full font-bold shadow-lg z-50 transition-all duration-300 flex items-center gap-2 hover:bg-slate-100 border border-slate-200 ${
+          showUndoButton ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-4 pointer-events-none'
+        }`}
+      >
+        <Undo2 size={18} />
+        Undo
+      </button>
+      
+      {/* First-Time Tutorial Overlay */}
+      {showTutorial && (
+        <div 
+          className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center"
+          onClick={dismissTutorial}
+        >
+          <div className="text-center text-white px-8">
+            <p className="text-lg mb-8 opacity-80">Tap anywhere to dismiss</p>
+            <div className="flex items-center justify-center gap-12 mb-8">
+              <div className="flex flex-col items-center gap-3">
+                <div className="w-20 h-20 rounded-full bg-red-500/80 flex items-center justify-center animate-pulse">
+                  <ChevronLeft size={48} className="text-white" />
+                </div>
+                <span className="text-xl font-bold">Nope</span>
+              </div>
+              <div className="flex flex-col items-center gap-3">
+                <div className="w-20 h-20 rounded-full bg-green-500/80 flex items-center justify-center animate-pulse">
+                  <ChevronRight size={48} className="text-white" />
+                </div>
+                <span className="text-xl font-bold">Love</span>
+              </div>
+            </div>
+            <p className="text-2xl font-bold">Swipe to find your perfect pet!</p>
+          </div>
+        </div>
+      )}
+      
+      {/* Onboarding Prompt - Shows after a few swipes */}
+      {showOnboardingPrompt && !showOnboardingWizard && (
+        <div className="fixed bottom-32 left-1/2 -translate-x-1/2 bg-white rounded-2xl shadow-2xl p-4 z-50 max-w-sm w-full mx-4 border border-orange-200">
+          <div className="flex items-start gap-3">
+            <div className="bg-orange-100 p-2 rounded-xl">
+              <Sparkles className="text-orange-500" size={24} />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-bold text-slate-900">Want better matches?</h3>
+              <p className="text-sm text-slate-500 mt-1">Take a quick 30-second quiz to help us find your perfect pet!</p>
+              <div className="flex gap-2 mt-3">
+                <button
+                  onClick={() => {
+                    setShowOnboardingPrompt(false);
+                    setShowOnboardingWizard(true);
+                  }}
+                  className="px-4 py-2 bg-orange-500 text-white rounded-full text-sm font-bold hover:bg-orange-600 transition"
+                >
+                  Let's go! 🐾
+                </button>
+                <button
+                  onClick={() => {
+                    setShowOnboardingPrompt(false);
+                    localStorage.setItem('hasDismissedOnboardingPrompt', 'true');
+                  }}
+                  className="px-4 py-2 text-slate-500 text-sm font-medium hover:text-slate-700 transition"
+                >
+                  Maybe later
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Onboarding Wizard Modal */}
+      {showOnboardingWizard && (
+        <OnboardingWizard 
+          onComplete={handleOnboardingComplete}
+          onSkip={handleOnboardingSkip}
+        />
+      )}
     </div>
   );
 }

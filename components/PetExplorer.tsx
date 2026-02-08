@@ -1,12 +1,12 @@
 'use client';
 
 import { Pet, PetSpecies } from '@/lib/adapters/base';
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Search, Dog, Cat, LayoutGrid, List, Grid3x3, SlidersHorizontal, X, Check, UserCircle, Sparkles, MapPin, Navigation, Loader2, RotateCcw, Baby, Users, Zap, Bird, Rabbit, Fish, Bug } from 'lucide-react';
+import { Search, Dog, Cat, LayoutGrid, List, Grid3x3, SlidersHorizontal, X, Check, UserCircle, Sparkles, MapPin, Navigation, Loader2, RotateCcw, Baby, Users, Zap, Bird, Rabbit, Fish, Bug, Heart } from 'lucide-react';
 import MatchProfileModal, { UserPreferences } from './MatchProfileModal'; // Import the new modal
-import { loadProfile, getRecommendedPets } from '@/lib/ai/learning-engine';
+import { loadProfile, getRecommendedPets, updatePreferences, removeFromShortlist, saveProfile, UserAIProfile } from '@/lib/ai/learning-engine';
 
 // Species filter options with icons and colors
 const SPECIES_FILTERS: { value: PetSpecies | 'All'; label: string; icon?: React.ElementType; color: string }[] = [
@@ -102,6 +102,40 @@ export default function PetExplorer({ initialPets, locationSearchEnabled = false
   
   // USER PREFERENCES (Loaded from local storage)
   const [userPrefs, setUserPrefs] = useState<UserPreferences | null>(null);
+  
+  // SHORTLIST STATE
+  const [aiProfile, setAiProfile] = useState<UserAIProfile | null>(null);
+  const [shortlistToast, setShortlistToast] = useState<string | null>(null);
+
+  // Toggle shortlist for a pet
+  const toggleShortlist = useCallback((pet: Pet, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const profile = aiProfile || loadProfile();
+    const isInShortlist = profile.likedPetIds.includes(pet.id);
+    
+    let updatedProfile: UserAIProfile;
+    if (isInShortlist) {
+      updatedProfile = removeFromShortlist(profile, pet.id);
+      setShortlistToast(`Removed ${pet.name} from shortlist`);
+    } else {
+      updatedProfile = updatePreferences(profile, pet, 'like');
+      setShortlistToast(`💚 Added ${pet.name} to shortlist!`);
+    }
+    
+    saveProfile(updatedProfile);
+    setAiProfile(updatedProfile);
+    
+    // Auto-hide toast
+    setTimeout(() => setShortlistToast(null), 2000);
+  }, [aiProfile]);
+
+  // Check if pet is in shortlist
+  const isInShortlist = useCallback((petId: string) => {
+    if (!aiProfile) return false;
+    return aiProfile.likedPetIds.includes(petId);
+  }, [aiProfile]);
 
   // Calculate unique breeds from pets for the breed filter dropdown
   const uniqueBreeds = useMemo(() => {
@@ -148,6 +182,10 @@ export default function PetExplorer({ initialPets, locationSearchEnabled = false
     if (saved) {
         setUserPrefs(JSON.parse(saved));
     }
+    
+    // Load AI profile for shortlist
+    const profile = loadProfile();
+    setAiProfile(profile);
     
     // Load cached location
     const cachedLocation = getCachedLocation();
@@ -806,6 +844,8 @@ export default function PetExplorer({ initialPets, locationSearchEnabled = false
         }>
           
           {visiblePets.map((pet) => {
+            const petInShortlist = isInShortlist(pet.id);
+            
             // GRID CARD
             if (viewMode === 'grid') return (
                 <div key={pet.id} className="group bg-white rounded-3xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-xl transition-all duration-300">
@@ -817,6 +857,18 @@ export default function PetExplorer({ initialPets, locationSearchEnabled = false
                         <div className="absolute top-4 left-4 flex flex-col gap-2 z-20">
                             {pet.daysInShelter > 30 && <span className="bg-purple-600 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg">Long Stay</span>}
                         </div>
+                        {/* Heart Button - Quick Shortlist Toggle */}
+                        <button
+                          onClick={(e) => toggleShortlist(pet, e)}
+                          className={`absolute top-4 right-4 z-20 w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 ${
+                            petInShortlist 
+                              ? 'bg-red-500 text-white shadow-lg scale-110' 
+                              : 'bg-white/80 text-slate-500 hover:bg-white hover:text-red-500 shadow-md'
+                          }`}
+                          title={petInShortlist ? 'Remove from shortlist' : 'Add to shortlist'}
+                        >
+                          <Heart size={20} fill={petInShortlist ? 'currentColor' : 'none'} />
+                        </button>
                     </Link>
                     <div className="p-6">
                         <div className="flex justify-between items-start mb-2">
@@ -895,7 +947,19 @@ export default function PetExplorer({ initialPets, locationSearchEnabled = false
                              </div>
                         </div>
 
-                        <div className="text-right">
+                        <div className="text-right flex items-center gap-2 justify-end">
+                             {/* Heart Button - Quick Shortlist Toggle */}
+                             <button
+                               onClick={(e) => toggleShortlist(pet, e)}
+                               className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 ${
+                                 petInShortlist 
+                                   ? 'bg-red-500 text-white' 
+                                   : 'bg-gray-100 text-slate-500 hover:bg-red-50 hover:text-red-500'
+                               }`}
+                               title={petInShortlist ? 'Remove from shortlist' : 'Add to shortlist'}
+                             >
+                               <Heart size={18} fill={petInShortlist ? 'currentColor' : 'none'} />
+                             </button>
                              <Link href={`/pet/${pet.id}`} className="inline-block px-6 py-2 bg-slate-100 text-slate-900 rounded-lg font-bold hover:bg-slate-200 transition text-sm">
                                 View
                              </Link>
@@ -911,6 +975,17 @@ export default function PetExplorer({ initialPets, locationSearchEnabled = false
                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center p-2 text-center">
                       <span className="text-white font-bold text-sm">{pet.name}</span>
                    </div>
+                   {/* Heart Button - Panorama */}
+                   <button
+                     onClick={(e) => toggleShortlist(pet, e)}
+                     className={`absolute top-1 right-1 z-10 w-6 h-6 rounded-full flex items-center justify-center transition-all duration-200 ${
+                       petInShortlist 
+                         ? 'bg-red-500 text-white' 
+                         : 'bg-white/80 text-slate-500 opacity-0 group-hover:opacity-100'
+                     }`}
+                   >
+                     <Heart size={12} fill={petInShortlist ? 'currentColor' : 'none'} />
+                   </button>
                 </Link>
             );
           })}
@@ -939,6 +1014,16 @@ export default function PetExplorer({ initialPets, locationSearchEnabled = false
             onSave={handleSaveProfile}
         />
       )}
+      
+      {/* Shortlist Toast Notification */}
+      <div 
+        className={`fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-6 py-3 rounded-full font-bold shadow-lg z-50 transition-all duration-300 flex items-center gap-2 ${
+          shortlistToast ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'
+        }`}
+      >
+        <Heart size={18} />
+        {shortlistToast}
+      </div>
     </div>
   );
 }

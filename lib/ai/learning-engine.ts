@@ -139,6 +139,64 @@ export function removeFromShortlist(profile: UserAIProfile, petId: string): User
 }
 
 /**
+ * UNDO A SWIPE - reverses the weight changes and removes from liked/disliked lists
+ * @param profile Current AI profile
+ * @param pet The pet that was swiped on
+ * @param wasLike Whether the original swipe was a like (true) or nope (false)
+ * @returns Updated AI profile with swipe reversed
+ */
+export function undoSwipe(
+  profile: UserAIProfile,
+  pet: Pet,
+  wasLike: boolean
+): UserAIProfile {
+  const newProfile: UserAIProfile = {
+    ...profile,
+    tagWeights: { ...profile.tagWeights },
+    breedWeights: { ...profile.breedWeights },
+    sizeWeights: { ...profile.sizeWeights },
+    energyWeights: { ...profile.energyWeights },
+    likedPetIds: [...profile.likedPetIds],
+    dislikedPetIds: [...profile.dislikedPetIds],
+    totalInteractions: Math.max(0, profile.totalInteractions - 1),
+  };
+
+  // Reverse the multiplier that was applied
+  const multiplier = wasLike ? -1 : 0.3; // Opposite of what updatePreferences does
+
+  // 1. Reverse Tag Weights
+  pet.tags.forEach(tag => {
+    const current = newProfile.tagWeights[tag] || 0;
+    newProfile.tagWeights[tag] = current + (1 * multiplier);
+  });
+
+  // 2. Reverse Breed Weights
+  const currentBreedWeight = newProfile.breedWeights[pet.breed] || 0;
+  newProfile.breedWeights[pet.breed] = currentBreedWeight + (1 * multiplier);
+
+  // 3. Reverse Size Weights
+  if (pet.size) {
+    const currentSizeWeight = newProfile.sizeWeights[pet.size] || 0;
+    newProfile.sizeWeights[pet.size] = currentSizeWeight + (0.5 * multiplier);
+  }
+
+  // 4. Reverse Energy Weights
+  if (pet.energyLevel) {
+    const currentEnergyWeight = newProfile.energyWeights[pet.energyLevel] || 0;
+    newProfile.energyWeights[pet.energyLevel] = currentEnergyWeight + (0.5 * multiplier);
+  }
+
+  // 5. Remove from liked/disliked lists
+  if (wasLike) {
+    newProfile.likedPetIds = newProfile.likedPetIds.filter(id => id !== pet.id);
+  } else {
+    newProfile.dislikedPetIds = newProfile.dislikedPetIds.filter(id => id !== pet.id);
+  }
+
+  return newProfile;
+}
+
+/**
  * GET RECOMMENDED PETS sorted by AI score
  */
 export function getRecommendedPets(allPets: Pet[], profile: UserAIProfile): Pet[] {

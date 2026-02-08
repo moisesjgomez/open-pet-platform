@@ -1,12 +1,40 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Menu, X, Dog, Cat, Heart } from 'lucide-react';
 import UserMenu from './UserMenu';
+import { loadProfile } from '@/lib/ai/learning-engine';
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
+  const [shortlistCount, setShortlistCount] = useState(0);
+
+  // Load shortlist count on mount and when window regains focus
+  useEffect(() => {
+    const updateCount = () => {
+      const profile = loadProfile();
+      setShortlistCount(profile.likedPetIds.length);
+    };
+    
+    updateCount();
+    
+    // Update when window regains focus (catches changes from other tabs)
+    window.addEventListener('focus', updateCount);
+    
+    // Also update on storage changes (for same-tab updates)
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === 'ai_profile') {
+        updateCount();
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+    
+    return () => {
+      window.removeEventListener('focus', updateCount);
+      window.removeEventListener('storage', handleStorage);
+    };
+  }, []);
 
   return (
     <nav className="bg-white border-b border-gray-100 sticky top-0 z-50">
@@ -32,8 +60,15 @@ export default function Navbar() {
           <div className="hidden md:flex items-center space-x-8">
             <Link href="/" className="text-slate-600 hover:text-orange-600 font-bold text-lg transition">Find a Pet</Link>
             <Link href="/swipe" className="text-slate-600 hover:text-orange-600 font-bold text-lg transition">Play Match</Link>
-            <Link href="/shortlist" className="flex items-center gap-2 text-slate-600 hover:text-red-500 font-bold text-lg transition">
-              <Heart size={20} />
+            <Link href="/shortlist" className="flex items-center gap-2 text-slate-600 hover:text-red-500 font-bold text-lg transition relative">
+              <span className="relative">
+                <Heart size={20} />
+                {shortlistCount > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">
+                    {shortlistCount > 9 ? '9+' : shortlistCount}
+                  </span>
+                )}
+              </span>
               Shortlist
             </Link>
             <UserMenu />
@@ -55,7 +90,14 @@ export default function Navbar() {
           <Link href="/" onClick={() => setIsOpen(false)} className="block px-4 py-3 rounded-xl bg-gray-50 text-slate-900 font-bold">Find a Pet</Link>
           <Link href="/swipe" onClick={() => setIsOpen(false)} className="block px-4 py-3 rounded-xl hover:bg-gray-50 text-slate-600 font-bold">Play Match</Link>
           <Link href="/shortlist" onClick={() => setIsOpen(false)} className="flex items-center gap-2 px-4 py-3 rounded-xl hover:bg-gray-50 text-slate-600 font-bold">
-            <Heart size={20} />
+            <span className="relative">
+              <Heart size={20} />
+              {shortlistCount > 0 && (
+                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">
+                  {shortlistCount > 9 ? '9+' : shortlistCount}
+                </span>
+              )}
+            </span>
             Shortlist
           </Link>
         </div>

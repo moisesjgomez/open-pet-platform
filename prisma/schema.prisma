@@ -96,6 +96,15 @@ model UserPreference {
   goodWithDogs       Boolean?
   goodWithCats       Boolean?
 
+  // Onboarding Profile Fields
+  livingSituation    String?  // "apartment", "house", "house_yard"
+  experienceLevel    String?  // "first_time", "some_experience", "experienced"
+  hasChildren        Boolean?
+  hasOtherPets       Boolean?
+  otherPetTypes      String?  // "dogs", "cats", "both", "other"
+  activityLevel      String?  // "couch_potato", "moderate", "active", "very_active"
+  onboardingComplete Boolean  @default(false)
+
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 }
